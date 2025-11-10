@@ -2,10 +2,32 @@
   "name": "contracts",
   "version": "1.0.0",
   "type": "module",
+  "description": "Predict & Fund - Prediction markets meet crowdfunding",
+  "scripts": {
+    "compile": "hardhat compile",
+    "compile:production": "hardhat compile --profile production",
+    "test": "hardhat test",
+    "coverage": "hardhat coverage",
+    "deploy:local": "hardhat run scripts/deploy.ts --network hardhatMainnet",
+    "deploy:testnet": "hardhat run scripts/deploy.ts --network bscTestnet",
+    "deploy:mainnet": "hardhat run scripts/deploy.ts --network bscMainnet",
+    "test-flow:local": "hardhat run scripts/test-flow.ts --network hardhatMainnet",
+    "test-flow:testnet": "hardhat run scripts/test-flow.ts --network bscTestnet",
+    "verify:testnet": "hardhat verify --network bscTestnet",
+    "verify:mainnet": "hardhat verify --network bscMainnet",
+    "clean": "hardhat clean",
+    "node": "hardhat node"
+  },
   "dependencies": {
-    "@openzeppelin/contracts": "^5.4.0"
+    "@openzeppelin/contracts": "^5.4.0",
+    "chai": "^6.2.0"
   },
   "devDependencies": {
-    "hardhat": "^3.0.12"
+    "@nomicfoundation/hardhat-toolbox-viem": "^5.0.1",
+    "@nomicfoundation/hardhat-verify": "^3.0.6",
+    "@types/chai": "^5.2.3",
+    "dotenv": "^17.2.3",
+    "hardhat": "^3.0.12",
+    "viem": "^2.38.6"
   }
 }
