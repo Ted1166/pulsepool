@@ -6,60 +6,32 @@
   :root {
     --background: 222 47% 5%;
     --foreground: 210 40% 98%;
-    
     --card: 222 47% 8%;
     --card-foreground: 210 40% 98%;
-    
     --popover: 222 47% 8%;
     --popover-foreground: 210 40% 98%;
-    
     --primary: 190 100% 50%;
     --primary-foreground: 222 47% 11%;
-    
     --secondary: 258 67% 62%;
     --secondary-foreground: 210 40% 98%;
-    
     --muted: 222 47% 15%;
     --muted-foreground: 215 20.2% 65.1%;
-    
     --accent: 160 84% 39%;
     --accent-foreground: 210 40% 98%;
-    
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-    
     --border: 222 47% 15%;
     --input: 222 47% 15%;
     --ring: 190 100% 50%;
-    
     --radius: 0.5rem;
   }
-}
 
-@layer base {
   * {
     @apply border-border;
   }
-  
+
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
-  }
-  
-  ::-webkit-scrollbar {
-    width: 10px;
-  }
-  
-  ::-webkit-scrollbar-track {
-    @apply bg-background;
-  }
-  
-  ::-webkit-scrollbar-thumb {
-    @apply bg-primary/20 rounded-full;
-  }
-  
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-primary/40;
   }
 }
 
@@ -67,15 +39,11 @@
   .glass-card {
     @apply bg-card/50 backdrop-blur-xl border border-primary/10 rounded-lg;
   }
-  
-  .glow-on-hover {
-    @apply transition-all duration-300 hover:shadow-[0_0_30px_rgba(0,217,255,0.3)];
-  }
-  
+
   .gradient-text {
-    @apply bg-gradient-cyber bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 bg-clip-text text-transparent;
   }
-  
+
   .grid-bg {
     background-image: 
       linear-gradient(to right, rgba(0, 217, 255, 0.05) 1px, transparent 1px),
