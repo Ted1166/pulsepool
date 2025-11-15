@@ -11,6 +11,8 @@ import { parseEther } from "viem";
 import { useNavigate } from "react-router-dom";
 import { Loader2, CheckCircle2 } from "lucide-react";
 
+const LISTING_FEE = "0.1"; // 0.1 BNB listing fee
+
 const CreateProject = () => {
   const navigate = useNavigate();
   const { isConnected } = useAccount();
@@ -19,32 +21,45 @@ const CreateProject = () => {
     description: "",
     category: "",
     fundingGoal: "",
-    imageUrl: "",
-    websiteUrl: "",
+    logoUrl: "",
   });
 
   const [milestones, setMilestones] = useState([
-    { description: "", targetDate: "", fundingTarget: "" }
+    { description: "", targetDate: "" }
   ]);
 
-  const [estimatedGas, setEstimatedGas] = useState<string>("~0.01");
-
   const { writeContractAsync, data: hash, isPending } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const { 
+    isLoading: isConfirming, 
+    isSuccess,
+    isError: isTxError,
+    error: txError 
+  } = useWaitForTransactionReceipt({ 
+    hash 
+  });
 
-  const estimatedGasCost = () => {
-    const baseCost = 0.003;
-    const perMilestone = 0.002;
-    const total = baseCost + (milestones.length * perMilestone);
-    return total.toFixed(4);
-  };
-
+  // Log transaction errors
   useEffect(() => {
-    setEstimatedGas(estimatedGasCost());
-  }, [milestones.length]);
+    if (isTxError && txError) {
+      console.error("❌ Transaction receipt error:", txError);
+      alert(`Transaction failed on-chain. Check console for details.\n\nView on BSCScan: https://testnet.bscscan.com/tx/${hash}`);
+    }
+  }, [isTxError, txError, hash]);
 
   const addMilestone = () => {
-    setMilestones([...milestones, { description: "", targetDate: "", fundingTarget: "" }]);
+    if (milestones.length >= 3) {
+      alert("Maximum 3 milestones to reduce gas costs");
+      return;
+    }
+    setMilestones([...milestones, { description: "", targetDate: "" }]);
+  };
+
+  const removeMilestone = (index: number) => {
+    if (milestones.length === 1) {
+      alert("At least 1 milestone is required");
+      return;
+    }
+    setMilestones(milestones.filter((_, i) => i !== index));
   };
 
   const updateMilestone = (index: number, field: string, value: string) => {
@@ -57,57 +72,127 @@ const CreateProject = () => {
     e.preventDefault();
     
     if (!isConnected) {
-        alert("Please connect your wallet first");
-        return;
+      alert("Please connect your wallet first");
+      return;
     }
 
     try {
-        // Limit to MAX 3 milestones to reduce gas
-        if (milestones.length > 3) {
-        alert("Please limit to 3 milestones to reduce gas costs");
+      // Limit milestones to 3
+      if (milestones.length > 3) {
+        alert("Maximum 3 milestones allowed to reduce gas costs");
         return;
+      }
+
+      // Validate all fields
+      if (!formData.name || !formData.description || !formData.category || !formData.fundingGoal) {
+        alert("Please fill in all required fields");
+        return;
+      }
+
+      // Validate milestones
+      for (const milestone of milestones) {
+        if (!milestone.description || !milestone.targetDate) {
+          alert("Please fill in all milestone fields");
+          return;
         }
+      }
 
-        // Prepare milestone data
-        const milestoneDescriptions = milestones.map(m => m.description);
-        const milestoneDates = milestones.map(m => 
-        Math.floor(new Date(m.targetDate).getTime() / 1000)
-        );
-        const milestoneFunding = milestones.map(m => 
-        parseEther(m.fundingTarget || "0")
-        );
+      // Prepare milestone data
+      const milestoneDescriptions = milestones.map(m => m.description);
+      const milestoneDates = milestones.map(m => 
+        BigInt(Math.floor(new Date(m.targetDate).getTime() / 1000))
+      );
 
-        // Call submitProject with optimized gas
-        await writeContractAsync({
+      // Validate future dates
+      const now = Math.floor(Date.now() / 1000);
+      for (const date of milestoneDates) {
+        if (date <= now) {
+          alert("All milestone dates must be in the future");
+          return;
+        }
+      }
+
+      // Calculate funding goal
+      const fundingGoal = parseEther(formData.fundingGoal);
+
+      console.log("📝 Submitting project:", {
+        name: formData.name,
+        description: formData.description,
+        category: formData.category,
+        logoUrl: formData.logoUrl || "",
+        fundingGoal: formData.fundingGoal,
+        milestones: milestoneDescriptions.length,
+        listingFee: LISTING_FEE
+      });
+
+      console.log("📊 Transaction parameters:", {
+        contract: ACTIVE_CONTRACTS.ProjectRegistry,
+        args: {
+          name: formData.name,
+          description: formData.description,
+          category: formData.category,
+          logoUrl: formData.logoUrl || "",
+          fundingGoal: fundingGoal.toString(),
+          milestoneDescriptions,
+          milestoneDates: milestoneDates.map(d => d.toString()),
+        },
+        value: parseEther(LISTING_FEE).toString(),
+      });
+
+      // 💰 Verify payment details
+      console.log("💰 Payment details:", {
+        listingFee: LISTING_FEE,
+        parsedValue: parseEther(LISTING_FEE).toString(),
+        inWei: parseEther(LISTING_FEE).toString(),
+        inBNB: LISTING_FEE + " BNB",
+      });
+
+      // ✅ Call submitProject with 7 parameters (matches deployed contract)
+      const tx = await writeContractAsync({
         address: ACTIVE_CONTRACTS.ProjectRegistry as `0x${string}`,
         abi: PROJECT_REGISTRY_ABI,
         functionName: 'submitProject',
         args: [
-            formData.name,
-            formData.description,
-            formData.category,
-            formData.imageUrl || "", // Ensure no undefined values
-            formData.websiteUrl || "",
-            parseEther(formData.fundingGoal),
-            milestoneDescriptions,
-            milestoneDates,
-            milestoneFunding,
+          formData.name,                    // 1. string _name
+          formData.description,             // 2. string _description
+          formData.category,                // 3. string _category
+          formData.logoUrl || "",           // 4. string _logoUrl
+          fundingGoal,                      // 5. uint256 _fundingGoal
+          milestoneDescriptions,            // 6. string[] _milestoneDescriptions
+          milestoneDates,                   // 7. uint256[] _milestoneDates
         ],
-        gas: 3000000n, // ✅ Reduced from 5M to 3M
-        } as any);
+        value: parseEther(LISTING_FEE),
+        gas: 1000000n,
+      } as any);
+
+      console.log("✅ Transaction submitted:", tx);
+      console.log(`🔍 View on BSCScan: https://testnet.bscscan.com/tx/${tx}`);
     } catch (error: any) {
-        console.error("Failed to create project:", error);
-        
-        // Better error messages
-        if (error.message?.includes('insufficient funds')) {
-        alert("Insufficient funds for gas. Get more tBNB from: https://testnet.bnbchain.org/faucet-smart");
-        } else if (error.message?.includes('user rejected')) {
-        alert("Transaction cancelled");
-        } else {
-        alert("Failed to create project. Check console for details.");
-        }
+      console.error("❌ Transaction failed:", error);
+      console.error("Full error object:", JSON.stringify(error, null, 2));
+      
+      // Detailed error messages
+      const errorMsg = error.message || error.toString();
+      
+      if (errorMsg.includes('insufficient funds') || errorMsg.includes('exceeds balance')) {
+        alert(`❌ Insufficient Balance\n\nYou need at least 0.15 tBNB:\n• 0.1 tBNB listing fee\n• ~0.05 tBNB for gas\n\nGet more from: https://testnet.bnbchain.org/faucet-smart`);
+      } else if (errorMsg.includes('user rejected') || errorMsg.includes('User denied')) {
+        alert("Transaction cancelled by user");
+      } else if (errorMsg.includes('Insufficient listing fee')) {
+        alert(`❌ Listing fee required: ${LISTING_FEE} tBNB`);
+      } else if (errorMsg.includes('Milestone date must be in future')) {
+        alert("❌ All milestone dates must be in the future");
+      } else if (errorMsg.includes('Name cannot be empty')) {
+        alert("❌ Project name is required");
+      } else if (errorMsg.includes('Maximum 10 milestones')) {
+        alert("❌ Maximum 10 milestones allowed (recommend 1-3 for gas savings)");
+      } else if (errorMsg.includes('ABI encoding')) {
+        alert(`❌ Parameter Mismatch\n\nThe contract parameters don't match. This is a development error.\n\n${errorMsg.substring(0, 200)}`);
+      } else {
+        alert(`❌ Transaction Failed\n\n${errorMsg.substring(0, 200)}\n\nCheck browser console for details.`);
+      }
     }
-    };
+  };
 
   if (isSuccess) {
     return (
@@ -205,11 +290,12 @@ const CreateProject = () => {
                   </div>
 
                   <div>
-                    <Label htmlFor="fundingGoal">Funding Goal (ETH) *</Label>
+                    <Label htmlFor="fundingGoal">Funding Goal (BNB) *</Label>
                     <Input
                       id="fundingGoal"
                       type="number"
                       step="0.01"
+                      min="0.01"
                       required
                       value={formData.fundingGoal}
                       onChange={(e) => setFormData({ ...formData, fundingGoal: e.target.value })}
@@ -218,26 +304,14 @@ const CreateProject = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="imageUrl">Image URL</Label>
-                    <Input
-                      id="imageUrl"
-                      value={formData.imageUrl}
-                      onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                      placeholder="https://..."
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="websiteUrl">Website URL</Label>
-                    <Input
-                      id="websiteUrl"
-                      value={formData.websiteUrl}
-                      onChange={(e) => setFormData({ ...formData, websiteUrl: e.target.value })}
-                      placeholder="https://..."
-                    />
-                  </div>
+                <div>
+                  <Label htmlFor="logoUrl">Logo URL (optional)</Label>
+                  <Input
+                    id="logoUrl"
+                    value={formData.logoUrl}
+                    onChange={(e) => setFormData({ ...formData, logoUrl: e.target.value })}
+                    placeholder="https://..."
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -245,8 +319,14 @@ const CreateProject = () => {
             <Card className="bg-gradient-card mb-6">
               <CardHeader>
                 <div className="flex justify-between items-center">
-                  <CardTitle>Milestones</CardTitle>
-                  <Button type="button" variant="outline" size="sm" onClick={addMilestone}>
+                  <CardTitle>Milestones (Max 3)</CardTitle>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={addMilestone}
+                    disabled={milestones.length >= 3}
+                  >
                     Add Milestone
                   </Button>
                 </div>
@@ -254,7 +334,19 @@ const CreateProject = () => {
               <CardContent className="space-y-6">
                 {milestones.map((milestone, index) => (
                   <div key={index} className="p-4 border border-border/50 rounded-lg space-y-4">
-                    <h3 className="font-semibold">Milestone {index + 1}</h3>
+                    <div className="flex justify-between items-center">
+                      <h3 className="font-semibold">Milestone {index + 1}</h3>
+                      {milestones.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeMilestone(index)}
+                        >
+                          Remove
+                        </Button>
+                      )}
+                    </div>
                     
                     <div>
                       <Label>Description *</Label>
@@ -266,48 +358,39 @@ const CreateProject = () => {
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label>Target Date *</Label>
-                        <Input
-                          type="date"
-                          required
-                          value={milestone.targetDate}
-                          onChange={(e) => updateMilestone(index, 'targetDate', e.target.value)}
-                        />
-                      </div>
-
-                      <div>
-                        <Label>Funding Target (ETH) *</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          required
-                          value={milestone.fundingTarget}
-                          onChange={(e) => updateMilestone(index, 'fundingTarget', e.target.value)}
-                          placeholder="2.0"
-                        />
-                      </div>
+                    <div>
+                      <Label>Target Date *</Label>
+                      <Input
+                        type="date"
+                        required
+                        value={milestone.targetDate}
+                        onChange={(e) => updateMilestone(index, 'targetDate', e.target.value)}
+                        min={new Date().toISOString().split('T')[0]}
+                      />
                     </div>
                   </div>
                 ))}
               </CardContent>
             </Card>
 
-             {/*CARD*/}
-            <Card className="bg-warning/10 border-warning/50 mb-6">
+            <Card className="bg-primary/10 border-primary/50 mb-6">
               <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="text-warning">⚠️</div>
-                  <div>
-                    <p className="font-semibold">Estimated Gas Cost</p>
-                    <p className="text-sm text-muted-foreground">
-                      ~{estimatedGas} tBNB ({milestones.length} milestone{milestones.length !== 1 ? 's' : ''})
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Limit to 1-3 milestones to save gas
-                    </p>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="font-semibold">Listing Fee:</span>
+                    <span>{LISTING_FEE} tBNB</span>
                   </div>
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>Estimated Gas:</span>
+                    <span>~0.002 tBNB</span>
+                  </div>
+                  <div className="flex justify-between font-bold text-lg border-t pt-2">
+                    <span>Total Cost:</span>
+                    <span>~{(parseFloat(LISTING_FEE) + 0.002).toFixed(3)} tBNB</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    ⚠️ Make sure you have at least 0.15 tBNB in your wallet
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -326,7 +409,7 @@ const CreateProject = () => {
                     {isPending ? 'Confirming...' : 'Creating...'}
                   </>
                 ) : (
-                  'Create Project'
+                  `Create Project (${LISTING_FEE} tBNB)`
                 )}
               </Button>
               
