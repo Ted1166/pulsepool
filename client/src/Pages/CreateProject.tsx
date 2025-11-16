@@ -5,13 +5,17 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useState, useEffect } from "react";
-import { useWriteContract, useWaitForTransactionReceipt, useAccount } from "wagmi";
+import {
+  useWriteContract,
+  useWaitForTransactionReceipt,
+  useAccount,
+} from "wagmi";
 import { ACTIVE_CONTRACTS, PROJECT_REGISTRY_ABI } from "@/lib/contracts";
 import { parseEther } from "viem";
 import { useNavigate } from "react-router-dom";
 import { Loader2, CheckCircle2 } from "lucide-react";
 
-const LISTING_FEE = "0.1"; // 0.1 BNB listing fee
+const LISTING_FEE = "0.001"; // 0.1 BNB listing fee
 
 const CreateProject = () => {
   const navigate = useNavigate();
@@ -25,24 +29,26 @@ const CreateProject = () => {
   });
 
   const [milestones, setMilestones] = useState([
-    { description: "", targetDate: "" }
+    { description: "", targetDate: "" },
   ]);
 
   const { writeContractAsync, data: hash, isPending } = useWriteContract();
-  const { 
-    isLoading: isConfirming, 
+  const {
+    isLoading: isConfirming,
     isSuccess,
     isError: isTxError,
-    error: txError 
-  } = useWaitForTransactionReceipt({ 
-    hash 
+    error: txError,
+  } = useWaitForTransactionReceipt({
+    hash,
   });
 
   // Log transaction errors
   useEffect(() => {
     if (isTxError && txError) {
       console.error("❌ Transaction receipt error:", txError);
-      alert(`Transaction failed on-chain. Check console for details.\n\nView on BSCScan: https://testnet.bscscan.com/tx/${hash}`);
+      alert(
+        `Transaction failed on-chain. Check console for details.\n\nView on BSCScan: https://testnet.bscscan.com/tx/${hash}`
+      );
     }
   }, [isTxError, txError, hash]);
 
@@ -70,7 +76,7 @@ const CreateProject = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!isConnected) {
       alert("Please connect your wallet first");
       return;
@@ -84,7 +90,12 @@ const CreateProject = () => {
       }
 
       // Validate all fields
-      if (!formData.name || !formData.description || !formData.category || !formData.fundingGoal) {
+      if (
+        !formData.name ||
+        !formData.description ||
+        !formData.category ||
+        !formData.fundingGoal
+      ) {
         alert("Please fill in all required fields");
         return;
       }
@@ -98,8 +109,8 @@ const CreateProject = () => {
       }
 
       // Prepare milestone data
-      const milestoneDescriptions = milestones.map(m => m.description);
-      const milestoneDates = milestones.map(m => 
+      const milestoneDescriptions = milestones.map((m) => m.description);
+      const milestoneDates = milestones.map((m) =>
         BigInt(Math.floor(new Date(m.targetDate).getTime() / 1000))
       );
 
@@ -122,7 +133,7 @@ const CreateProject = () => {
         logoUrl: formData.logoUrl || "",
         fundingGoal: formData.fundingGoal,
         milestones: milestoneDescriptions.length,
-        listingFee: LISTING_FEE
+        listingFee: LISTING_FEE,
       });
 
       console.log("📊 Transaction parameters:", {
@@ -134,7 +145,7 @@ const CreateProject = () => {
           logoUrl: formData.logoUrl || "",
           fundingGoal: fundingGoal.toString(),
           milestoneDescriptions,
-          milestoneDates: milestoneDates.map(d => d.toString()),
+          milestoneDates: milestoneDates.map((d) => d.toString()),
         },
         value: parseEther(LISTING_FEE).toString(),
       });
@@ -151,15 +162,15 @@ const CreateProject = () => {
       const tx = await writeContractAsync({
         address: ACTIVE_CONTRACTS.ProjectRegistry as `0x${string}`,
         abi: PROJECT_REGISTRY_ABI,
-        functionName: 'submitProject',
+        functionName: "submitProject",
         args: [
-          formData.name,                    // 1. string _name
-          formData.description,             // 2. string _description
-          formData.category,                // 3. string _category
-          formData.logoUrl || "",           // 4. string _logoUrl
-          fundingGoal,                      // 5. uint256 _fundingGoal
-          milestoneDescriptions,            // 6. string[] _milestoneDescriptions
-          milestoneDates,                   // 7. uint256[] _milestoneDates
+          formData.name, // 1. string _name
+          formData.description, // 2. string _description
+          formData.category, // 3. string _category
+          formData.logoUrl || "", // 4. string _logoUrl
+          fundingGoal, // 5. uint256 _fundingGoal
+          milestoneDescriptions, // 6. string[] _milestoneDescriptions
+          milestoneDates, // 7. uint256[] _milestoneDates
         ],
         value: parseEther(LISTING_FEE),
         gas: 1000000n,
@@ -170,26 +181,46 @@ const CreateProject = () => {
     } catch (error: any) {
       console.error("❌ Transaction failed:", error);
       console.error("Full error object:", JSON.stringify(error, null, 2));
-      
+
       // Detailed error messages
       const errorMsg = error.message || error.toString();
-      
-      if (errorMsg.includes('insufficient funds') || errorMsg.includes('exceeds balance')) {
-        alert(`❌ Insufficient Balance\n\nYou need at least 0.15 tBNB:\n• 0.1 tBNB listing fee\n• ~0.05 tBNB for gas\n\nGet more from: https://testnet.bnbchain.org/faucet-smart`);
-      } else if (errorMsg.includes('user rejected') || errorMsg.includes('User denied')) {
+
+      if (
+        errorMsg.includes("insufficient funds") ||
+        errorMsg.includes("exceeds balance")
+      ) {
+        alert(
+          `❌ Insufficient Balance\n\nYou need at least 0.15 tBNB:\n• 0.1 tBNB listing fee\n• ~0.05 tBNB for gas\n\nGet more from: https://testnet.bnbchain.org/faucet-smart`
+        );
+      } else if (
+        errorMsg.includes("user rejected") ||
+        errorMsg.includes("User denied")
+      ) {
         alert("Transaction cancelled by user");
-      } else if (errorMsg.includes('Insufficient listing fee')) {
+      } else if (errorMsg.includes("Insufficient listing fee")) {
         alert(`❌ Listing fee required: ${LISTING_FEE} tBNB`);
-      } else if (errorMsg.includes('Milestone date must be in future')) {
+      } else if (errorMsg.includes("Milestone date must be in future")) {
         alert("❌ All milestone dates must be in the future");
-      } else if (errorMsg.includes('Name cannot be empty')) {
+      } else if (errorMsg.includes("Name cannot be empty")) {
         alert("❌ Project name is required");
-      } else if (errorMsg.includes('Maximum 10 milestones')) {
-        alert("❌ Maximum 10 milestones allowed (recommend 1-3 for gas savings)");
-      } else if (errorMsg.includes('ABI encoding')) {
-        alert(`❌ Parameter Mismatch\n\nThe contract parameters don't match. This is a development error.\n\n${errorMsg.substring(0, 200)}`);
+      } else if (errorMsg.includes("Maximum 10 milestones")) {
+        alert(
+          "❌ Maximum 10 milestones allowed (recommend 1-3 for gas savings)"
+        );
+      } else if (errorMsg.includes("ABI encoding")) {
+        alert(
+          `❌ Parameter Mismatch\n\nThe contract parameters don't match. This is a development error.\n\n${errorMsg.substring(
+            0,
+            200
+          )}`
+        );
       } else {
-        alert(`❌ Transaction Failed\n\n${errorMsg.substring(0, 200)}\n\nCheck browser console for details.`);
+        alert(
+          `❌ Transaction Failed\n\n${errorMsg.substring(
+            0,
+            200
+          )}\n\nCheck browser console for details.`
+        );
       }
     }
   };
@@ -201,15 +232,20 @@ const CreateProject = () => {
         <main className="pt-24 pb-16">
           <div className="container mx-auto px-4 max-w-2xl text-center">
             <CheckCircle2 className="w-16 h-16 text-success mx-auto mb-4" />
-            <h2 className="text-3xl font-bold mb-4">Project Created Successfully! 🎉</h2>
+            <h2 className="text-3xl font-bold mb-4">
+              Project Created Successfully! 🎉
+            </h2>
             <p className="text-muted-foreground mb-8">
               Your project has been submitted to the blockchain.
             </p>
             <div className="flex gap-4 justify-center">
-              <Button variant="hero" onClick={() => navigate('/projects')}>
+              <Button variant="hero" onClick={() => navigate("/projects")}>
                 View Projects
               </Button>
-              <Button variant="outline" onClick={() => window.location.reload()}>
+              <Button
+                variant="outline"
+                onClick={() => window.location.reload()}
+              >
                 Create Another
               </Button>
             </div>
@@ -238,7 +274,7 @@ const CreateProject = () => {
   return (
     <div className="min-h-screen">
       <Header />
-      
+
       <main className="pt-24 pb-16">
         <div className="container mx-auto px-4 max-w-4xl">
           <div className="mb-8">
@@ -260,7 +296,9 @@ const CreateProject = () => {
                     id="name"
                     required
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
                     placeholder="DeFi Yield Optimizer"
                   />
                 </div>
@@ -271,7 +309,9 @@ const CreateProject = () => {
                     id="description"
                     required
                     value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
                     placeholder="Describe your project..."
                     rows={4}
                   />
@@ -284,7 +324,9 @@ const CreateProject = () => {
                       id="category"
                       required
                       value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, category: e.target.value })
+                      }
                       placeholder="DeFi, NFT, Gaming..."
                     />
                   </div>
@@ -298,7 +340,12 @@ const CreateProject = () => {
                       min="0.01"
                       required
                       value={formData.fundingGoal}
-                      onChange={(e) => setFormData({ ...formData, fundingGoal: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          fundingGoal: e.target.value,
+                        })
+                      }
                       placeholder="10.0"
                     />
                   </div>
@@ -309,7 +356,9 @@ const CreateProject = () => {
                   <Input
                     id="logoUrl"
                     value={formData.logoUrl}
-                    onChange={(e) => setFormData({ ...formData, logoUrl: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, logoUrl: e.target.value })
+                    }
                     placeholder="https://..."
                   />
                 </div>
@@ -320,10 +369,10 @@ const CreateProject = () => {
               <CardHeader>
                 <div className="flex justify-between items-center">
                   <CardTitle>Milestones (Max 3)</CardTitle>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={addMilestone}
                     disabled={milestones.length >= 3}
                   >
@@ -333,7 +382,10 @@ const CreateProject = () => {
               </CardHeader>
               <CardContent className="space-y-6">
                 {milestones.map((milestone, index) => (
-                  <div key={index} className="p-4 border border-border/50 rounded-lg space-y-4">
+                  <div
+                    key={index}
+                    className="p-4 border border-border/50 rounded-lg space-y-4"
+                  >
                     <div className="flex justify-between items-center">
                       <h3 className="font-semibold">Milestone {index + 1}</h3>
                       {milestones.length > 1 && (
@@ -347,13 +399,15 @@ const CreateProject = () => {
                         </Button>
                       )}
                     </div>
-                    
+
                     <div>
                       <Label>Description *</Label>
                       <Input
                         required
                         value={milestone.description}
-                        onChange={(e) => updateMilestone(index, 'description', e.target.value)}
+                        onChange={(e) =>
+                          updateMilestone(index, "description", e.target.value)
+                        }
                         placeholder="Launch Beta on Testnet"
                       />
                     </div>
@@ -364,8 +418,10 @@ const CreateProject = () => {
                         type="date"
                         required
                         value={milestone.targetDate}
-                        onChange={(e) => updateMilestone(index, 'targetDate', e.target.value)}
-                        min={new Date().toISOString().split('T')[0]}
+                        onChange={(e) =>
+                          updateMilestone(index, "targetDate", e.target.value)
+                        }
+                        min={new Date().toISOString().split("T")[0]}
                       />
                     </div>
                   </div>
@@ -386,7 +442,9 @@ const CreateProject = () => {
                   </div>
                   <div className="flex justify-between font-bold text-lg border-t pt-2">
                     <span>Total Cost:</span>
-                    <span>~{(parseFloat(LISTING_FEE) + 0.002).toFixed(3)} tBNB</span>
+                    <span>
+                      ~{(parseFloat(LISTING_FEE) + 0.002).toFixed(3)} tBNB
+                    </span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
                     ⚠️ Make sure you have at least 0.15 tBNB in your wallet
@@ -406,18 +464,18 @@ const CreateProject = () => {
                 {isPending || isConfirming ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    {isPending ? 'Confirming...' : 'Creating...'}
+                    {isPending ? "Confirming..." : "Creating..."}
                   </>
                 ) : (
                   `Create Project (${LISTING_FEE} tBNB)`
                 )}
               </Button>
-              
+
               <Button
                 type="button"
                 variant="outline"
                 size="lg"
-                onClick={() => navigate('/projects')}
+                onClick={() => navigate("/projects")}
               >
                 Cancel
               </Button>

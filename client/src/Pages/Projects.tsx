@@ -12,6 +12,8 @@ const Projects = () => {
   const queryClient = useQueryClient();
   const { data: projects, isLoading, isError, refetch } = useAllProjects();
 
+  // console.log("projects ", projects);
+
   const handleRefresh = () => {
     queryClient.invalidateQueries(); // Clear all cached queries
     refetch(); // Refetch projects
@@ -20,7 +22,7 @@ const Projects = () => {
   return (
     <div className="min-h-screen">
       <Header />
-      
+
       <main className="pt-24 pb-16">
         <div className="container mx-auto px-4">
           {/* Header */}
@@ -34,13 +36,15 @@ const Projects = () => {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="lg"
                 onClick={handleRefresh}
                 disabled={isLoading}
               >
-                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                <RefreshCw
+                  className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`}
+                />
                 Refresh
               </Button>
               <Link to="/create">
@@ -78,8 +82,12 @@ const Projects = () => {
           {/* Error State */}
           {isError && (
             <div className="text-center py-12">
-              <p className="text-destructive mb-4">Error loading projects. Please check your wallet connection.</p>
-              <p className="text-sm text-muted-foreground mb-4">Make sure you're connected to BSC Testnet.</p>
+              <p className="text-destructive mb-4">
+                Error loading projects. Please check your wallet connection.
+              </p>
+              <p className="text-sm text-muted-foreground mb-4">
+                Make sure you're connected to BSC Testnet.
+              </p>
               <Button onClick={handleRefresh} variant="outline">
                 Try Again
               </Button>
@@ -89,11 +97,11 @@ const Projects = () => {
           {/* Empty State */}
           {!isLoading && !isError && (!projects || projects.length === 0) && (
             <div className="text-center py-12">
-              <p className="text-muted-foreground mb-4">No projects yet. Be the first to create one!</p>
+              <p className="text-muted-foreground mb-4">
+                No projects yet. Be the first to create one!
+              </p>
               <Link to="/create">
-                <Button variant="hero">
-                  Create Project
-                </Button>
+                <Button variant="hero">Create Project</Button>
               </Link>
             </div>
           )}
@@ -102,26 +110,27 @@ const Projects = () => {
           {!isLoading && !isError && projects && projects.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {projects.map((project, index) => {
-                if (project.status === 'success' && project.result) {
-                  const data = project.result as any;
-                  
-                  // Skip if project name is empty
-                  if (!data[0]) return null;
-                  
-                  return (
-                    <ProjectCard
-                      key={index}
-                      id={String(index)}
-                      name={data[0]}
-                      description={data[2] || 'No description'}
-                      category={data[3] || 'General'}
-                      fundingGoal={data[6] || 0n}
-                      fundingRaised={data[7] || 0n}
-                      totalPredictions={0n}
-                      confidence={50}
-                    />
-                  );
-                }
+                const data = project as any;
+                console.log("data", data);
+
+                // Skip if project name is empty
+                // if (!data[0]) return null;
+                // console.log("data", data[0]);
+
+                return (
+                  <ProjectCard
+                    key={index}
+                    id={String(data.id)}
+                    name={data?.name}
+                    description={data?.description || "No description"}
+                    category={data?.category || "General"}
+                    fundingGoal={data?.fundingGoal || 0n}
+                    fundingRaised={data?.totalFundsRaised || 0n}
+                    totalPredictions={data?.totalPredictions.toString()}
+                    confidence={50}
+                  />
+                );
+
                 return null;
               })}
             </div>
