@@ -1,4 +1,4 @@
-# 🚀 PREDICT & FUND (Oraculum)
+# 🚀 PULSEPOOL
 
 > **Where Prediction Markets Meet Crowdfunding**  
 > Bet on project milestones. Winners fund the future. Everyone wins.
@@ -10,9 +10,9 @@
 
 ---
 
-## 🎯 **What is PREDICT & FUND?**
+## 🎯 **What is PULSEPOOL?**
 
-**PREDICT & FUND** is a revolutionary decentralized platform that combines:
+**PulsePool** is a decentralized platform that revolutionizes project funding by combining prediction markets with crowdfunding. Users bet on whether projects will achieve their milestones - losing bets automatically fund the projects, while winners earn BNB rewards and token allocation rights:
 - 🎲 **Prediction Markets** - Bet on whether projects will hit their milestones
 - 💰 **Crowdfunding** - Losing bets automatically fund winning projects
 - 🏆 **Reputation System** - Top predictors earn rewards & token allocation rights
@@ -54,7 +54,7 @@ Traditional crowdfunding lacks market validation, while prediction markets don't
 ## 🛠️ **Tech Stack**
 
 ### **Smart Contracts**
-- Solidity 0.8.20
+- Solidity
 - Hardhat (development & testing)
 - OpenZeppelin (security & upgradeability)
 - Chainlink (oracles for milestone verification)
@@ -67,9 +67,7 @@ Traditional crowdfunding lacks market validation, while prediction markets don't
 - RainbowKit (wallet connection)
 
 ### **Blockchain**
-- BNB Smart Chain (BSC)
 - Testnet: BSC Testnet
-- Mainnet: BNB Chain
 
 ---
 
@@ -79,7 +77,7 @@ Traditional crowdfunding lacks market validation, while prediction markets don't
 - Node.js 18+ (LTS)
 - npm or yarn
 - MetaMask wallet
-- BNB (testnet or mainnet)
+- BNB testnet 
 
 ### **1. Clone the Repository**
 ```bash
@@ -113,54 +111,6 @@ npm run deploy:testnet
 npm run deploy:mainnet
 ```
 
-### **3. Setup Frontend**
-```bash
-cd ../client
-
-# Install dependencies
-npm install
-
-# Start dev server
-npm run dev
-
-# Build for production
-npm run build
-```
-
----
-
-## 📁 **Project Structure**
-```
-oraculum/
-├── contracts/                 # Smart contracts
-│   ├── contracts/
-│   │   ├── ProjectRegistry.sol
-│   │   ├── PredictionMarket.sol
-│   │   ├── ReputationNFT.sol
-│   │   └── interfaces/
-│   ├── scripts/
-│   │   └── deploy.ts
-│   ├── test/
-│   │   └── Oraculum.test.ts
-│   └── hardhat.config.ts
-│
-├── client/                    # React frontend
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── ui/           # Reusable UI components
-│   │   │   ├── layout/       # Layout components
-│   │   │   ├── projects/     # Project-specific components
-│   │   │   └── markets/      # Market components
-│   │   ├── pages/            # Page components
-│   │   ├── hooks/            # Custom React hooks
-│   │   ├── lib/              # Utilities & config
-│   │   └── types/            # TypeScript types
-│   └── public/
-│
-└── README.md
-```
-
----
 
 ## 🧪 **Testing**
 
@@ -202,17 +152,6 @@ npm run deploy:testnet
 npx hardhat verify --network bscTestnet <CONTRACT_ADDRESS>
 ```
 
-### **Mainnet Deployment**
-```bash
-# ⚠️ CRITICAL: Test thoroughly on testnet first!
-
-# Deploy to BSC Mainnet
-npm run deploy:mainnet
-
-# Verify contracts
-npx hardhat verify --network bscMainnet <CONTRACT_ADDRESS>
-```
-
 ### **Frontend Deployment**
 ```bash
 cd client
@@ -242,74 +181,6 @@ vercel deploy
 - [ ] External audit - 🔄 Pending
 - [ ] Bug bounty program - 📅 Planned
 
-### **Report Security Issues**
-Please report security vulnerabilities to: **security@predictandfund.xyz**
-
----
-
-## 📊 **Contract Addresses**
-
-### **BSC Testnet**
-| Contract | Address |
-|----------|---------|
-| ProjectRegistry | `0x...` |
-| PredictionMarket | `0x...` |
-| ReputationNFT | `0x...` |
-
-### **BSC Mainnet** (Coming Soon)
-| Contract | Address |
-|----------|---------|
-| ProjectRegistry | TBD |
-| PredictionMarket | TBD |
-| ReputationNFT | TBD |
-
----
-
-## 🎨 **Design Philosophy**
-
-### **User Experience**
-- **Dark Theme** - Cyber aesthetic with gradient accents
-- **Responsive** - Mobile-first design
-- **Fast** - Optimized for performance
-- **Intuitive** - Simple 4-step flow
-
-### **Color Palette**
-- **Primary** - `hsl(217, 91%, 60%)` (Cyan Blue)
-- **Secondary** - `hsl(263, 70%, 50%)` (Purple)
-- **Accent** - `hsl(173, 80%, 40%)` (Teal)
-- **Success** - `hsl(142, 76%, 36%)` (Green)
-- **Background** - `hsl(224, 71%, 4%)` (Deep Dark)
-
----
-
-## 🗺️ **Roadmap**
-
-### **Phase 1: MVP** ✅ (Current)
-- [x] Core smart contracts
-- [x] Basic frontend UI
-- [x] Wallet integration
-- [x] Testnet deployment
-
-### **Phase 2: Beta Launch** 🔄 (Q1 2025)
-- [ ] Mainnet deployment
-- [ ] External security audit
-- [ ] Oracle integration (Chainlink)
-- [ ] Advanced reputation system
-
-### **Phase 3: Growth** 📅 (Q2 2025)
-- [ ] Mobile app (React Native)
-- [ ] Multi-chain support (Ethereum, Polygon)
-- [ ] Governance token launch
-- [ ] DAO formation
-
-### **Phase 4: Scale** 🚀 (Q3 2025)
-- [ ] AI-powered project analysis
-- [ ] Institutional partnerships
-- [ ] Fiat on-ramps
-- [ ] Global expansion
-
----
-
 ## 🤝 **Contributing**
 
 We welcome contributions! Here's how:
@@ -327,11 +198,6 @@ We welcome contributions! Here's how:
 - Update documentation
 - Keep commits atomic and descriptive
 
-### **Code of Conduct**
-Be respectful, inclusive, and constructive. See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
-
----
-
 ## 📄 **License**
 
 This project is licensed under the **MIT License** - see [LICENSE](LICENSE) file for details.
@@ -341,17 +207,9 @@ This project is licensed under the **MIT License** - see [LICENSE](LICENSE) file
 ## 👥 **Team**
 
 ### **Core Team**
-- **Ted (Adams)** - [@Ted1166](https://github.com/Ted1166) - Full Stack Developer
-
-### **Advisors**
-- TBD
-
-### **Special Thanks**
-- Polkadot Cloud Builder Party 2025
-- BNB Chain Community
-- OpenZeppelin for security libraries
-
----
+- **Ted (Adams)**  - Full Stack Developer
+- **Felix (Awere)** - Full Stack Developer
+- **Peter (Kagwe)** - Full Stack Developer
 
 ## 📞 **Contact & Links**
 
@@ -360,21 +218,6 @@ This project is licensed under the **MIT License** - see [LICENSE](LICENSE) file
 - **Twitter**: [@PredictAndFund](https://twitter.com/PredictAndFund) *(Coming Soon)*
 - **Discord**: [Join our community](https://discord.gg/predictandfund) *(Coming Soon)*
 - **Email**: contact@predictandfund.xyz
-
----
-
-## 🎯 **Hackathon Submission**
-
-### **Polkadot Cloud Builder Party 2025**
-- **Track**: DeFi / Prediction Markets
-- **Team**: Ted's Team
-- **Submission Date**: January 2025
-
-### **Key Innovations**
-1. **Dual-Purpose Betting** - Bets that fund projects
-2. **Reputation-Based Rewards** - NFT-based predictor reputation
-3. **Zero-Waste Model** - All funds either reward or fund
-4. **Milestone Validation** - Oracle-verified achievements
 
 ---
 
@@ -395,25 +238,4 @@ A: On-chain badges showing your prediction accuracy and earning you benefits.
 ### **Q: Is this legal?**
 A: Yes! We're not a financial instrument - we're a project funding mechanism with gamification.
 
----
 
-## ⚠️ **Disclaimer**
-
-PREDICT & FUND is experimental software. Use at your own risk. This is not financial advice. Always DYOR (Do Your Own Research).
-
----
-
-## 🌟 **Star History**
-
-[![Star History Chart](https://api.star-history.com/svg?repos=Ted1166/oraculum&type=Date)](https://star-history.com/#Ted1166/oraculum&Date)
-
----
-
-<div align="center">
-
-**Built with ❤️ for the decentralized future**
-
-[⬆ Back to Top](#-predict--fund-oraculum)
-
-</div>
-EOF
