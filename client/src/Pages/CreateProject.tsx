@@ -10,6 +10,7 @@ import { ACTIVE_CONTRACTS, PROJECT_REGISTRY_ABI } from "@/lib/contracts";
 import { parseEther } from "viem";
 import { useNavigate } from "react-router-dom";
 import { Loader2, CheckCircle2 } from "lucide-react";
+import ChatAgent from "@/agent/ChatAgent";
 
 const CreateProject = () => {
   const navigate = useNavigate();
@@ -342,6 +343,7 @@ const CreateProject = () => {
           </form>
         </div>
       </main>
+      <ChatAgent/>
     </div>
   );
 };

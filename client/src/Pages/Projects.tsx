@@ -7,6 +7,7 @@ import { useAllProjects } from "@/hooks/useProjects";
 import { formatEther } from "viem";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import ChatAgent from "@/agent/ChatAgent";
 
 const Projects = () => {
   const queryClient = useQueryClient();
@@ -128,6 +129,7 @@ const Projects = () => {
           )}
         </div>
       </main>
+      <ChatAgent/>
     </div>
   );
 };

@@ -1,3 +1,4 @@
+import ChatAgent from "@/agent/ChatAgent";
 import { Header } from "@/components/Header";
 import { Leaderboard } from "@/components/LeaderBoard";
 import { Card, CardContent } from "@/components/ui/card";
@@ -101,6 +102,7 @@ const LeaderboardPage = () => {
           </Card>
         </div>
       </main>
+      <ChatAgent/>
     </div>
   );
 };

@@ -23,6 +23,7 @@ import { useMarket, usePlaceBet } from "@/hooks/usePredictions";
 import { formatEther, parseEther } from "viem";
 import { useState } from "react";
 import { useAccount } from "wagmi";
+import ChatAgent from "@/agent/ChatAgent";
 
 const ProjectDetail = () => {
   const { id } = useParams();
@@ -453,6 +454,7 @@ const ProjectDetail = () => {
           </div>
         </div>
       </main>
+      <ChatAgent/>
     </div>
   );
 };

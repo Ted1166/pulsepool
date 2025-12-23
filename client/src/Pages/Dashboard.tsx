@@ -17,6 +17,7 @@ import { Link } from "react-router-dom";
 import { useAccount } from "wagmi";
 import { useUserBets } from "@/hooks/usePredictions";
 import { formatEther } from "viem";
+import ChatAgent from "@/agent/ChatAgent";
 
 const Dashboard = () => {
   const { address, isConnected } = useAccount();
@@ -386,6 +387,7 @@ const Dashboard = () => {
           </Tabs>
         </div>
       </main>
+      <ChatAgent/>
     </div>
   );
 };

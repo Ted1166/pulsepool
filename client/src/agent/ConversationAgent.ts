@@ -1,4 +1,5 @@
 import { OpenAI } from 'openai';
+import type { Action } from './types/actions';
 
 interface ConversationConfig {
     openaiApiKey: string;
@@ -42,6 +43,7 @@ export class ConversationAgent {
     private config: Required<ConversationConfig>;
     private conversations: Map<string, ConversationState>;
     private currentConversationId: string | null;
+    private actions: Map<string, Action> = new Map();
 
     constructor(config: ConversationConfig) {
         this.openai = new OpenAI({
@@ -65,6 +67,11 @@ export class ConversationAgent {
     private generateId(): string {
         return `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     }
+
+    public registerAction(action: Action): void {
+        this.actions.set(action.name, action);
+        }
+
 
     private validateMessage(content: string): boolean {
         if (!content || typeof content !== 'string') {
@@ -91,37 +98,43 @@ export class ConversationAgent {
     }
 
     private async callOpenAI(conversation: ConversationState): Promise<OpenAI.Chat.Completions.ChatCompletion> {
-        try {
-            const trimmedMessages = this.trimConversationHistory(conversation.messages);
-            
-            // Build messages array for API call - system prompt first, then conversation history
-            const apiMessages = [];
-            
-            // Add system message (not stored in conversation history)
-            if (conversation.systemPrompt) {
-                apiMessages.push({
-                    role: 'system' as const,
-                    content: conversation.systemPrompt
-                });
-            }
-            
-            // Add conversation history (only user/assistant messages)
-            apiMessages.push(...trimmedMessages.map(msg => ({
-                role: msg.role,
-                content: msg.content
-            })));
-            
-            const response = await this.openai.chat.completions.create({
-                model: this.config.model,
-                messages: apiMessages,
-                max_tokens: this.config.maxTokens,
-                temperature: this.config.temperature
-            });
-
-            return response;
-        } catch (error) {
-            throw new Error(`OpenAI API error: ${(error as Error).message}`);
+    try {
+        const trimmedMessages = this.trimConversationHistory(conversation.messages);
+        
+        const apiMessages = [];
+        
+        if (conversation.systemPrompt) {
+        apiMessages.push({
+            role: 'system' as const,
+            content: conversation.systemPrompt
+        });
         }
+        
+        apiMessages.push(...trimmedMessages.map(msg => ({
+        role: msg.role,
+        content: msg.content
+        })));
+
+        const tools = this.getToolDefinitions();
+        
+        const response = await this.openai.chat.completions.create({
+        model: this.config.model,
+        messages: apiMessages,
+        max_tokens: this.config.maxTokens,
+        temperature: this.config.temperature,
+        tools: tools.length > 0 ? tools : undefined
+        });
+
+        // Handle tool calls
+        const choice = response.choices[0];
+        if (choice.finish_reason === 'tool_calls' && choice.message.tool_calls) {
+        return this.handleToolCalls(conversation, apiMessages, choice.message, response);
+        }
+
+        return response;
+    } catch (error) {
+        throw new Error(`OpenAI API error: ${(error as Error).message}`);
+    }
     }
 
     public createConversation(systemPrompt?: string): string {
@@ -341,5 +354,77 @@ export class ConversationAgent {
         conversationId?: string
     ): Promise<ConversationResponse> {
         return this.sendMessage(question, conversationId);
+    }
+
+    private getToolDefinitions(): OpenAI.Chat.Completions.ChatCompletionTool[] {
+    return Array.from(this.actions.values()).map(action => ({
+        type: 'function' as const,
+        function: {
+        name: action.name,
+        description: action.description,
+        parameters: {
+            type: 'object',
+            properties: Object.fromEntries(
+            action.parameters.map(p => [
+                p.name,
+                { type: p.type, description: p.description }
+            ])
+            ),
+            required: action.parameters.filter(p => p.required).map(p => p.name)
+        }
+        }
+    }));
+    }
+    private async handleToolCalls(
+    conversation: ConversationState,
+    apiMessages: any[],
+    assistantMessage: OpenAI.Chat.Completions.ChatCompletionMessage,
+    originalResponse: OpenAI.Chat.Completions.ChatCompletion
+    ): Promise<OpenAI.Chat.Completions.ChatCompletion> {
+    
+    apiMessages.push(assistantMessage);
+
+    for (const toolCall of assistantMessage.tool_calls!) {
+        // Type guard to handle different tool call types
+        if (toolCall.type !== 'function') {
+        continue;
+        }
+
+        const functionCall = toolCall as OpenAI.Chat.Completions.ChatCompletionMessageToolCall & {
+        function: { name: string; arguments: string };
+        };
+
+        const action = this.actions.get(functionCall.function.name);
+        
+        let toolResult: string;
+        if (action) {
+        const params = JSON.parse(functionCall.function.arguments);
+        const result = await action.execute(params);
+        toolResult = JSON.stringify(result);
+        } else {
+        toolResult = JSON.stringify({ success: false, error: 'Unknown action' });
+        }
+
+        apiMessages.push({
+        role: 'tool' as const,
+        tool_call_id: toolCall.id,
+        content: toolResult
+        });
+    }
+
+    const finalResponse = await this.openai.chat.completions.create({
+        model: this.config.model,
+        messages: apiMessages,
+        max_tokens: this.config.maxTokens,
+        temperature: this.config.temperature
+    });
+
+    if (originalResponse.usage && finalResponse.usage) {
+        finalResponse.usage.prompt_tokens += originalResponse.usage.prompt_tokens;
+        finalResponse.usage.completion_tokens += originalResponse.usage.completion_tokens;
+        finalResponse.usage.total_tokens += originalResponse.usage.total_tokens;
+    }
+
+    return finalResponse;
     }
 }
