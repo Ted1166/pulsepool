@@ -13,7 +13,7 @@
 ## 🎯 **What is PULSEPOOL?**
 
 **PulsePool** is a decentralized platform that revolutionizes project funding by combining prediction markets with crowdfunding. Users bet on whether projects will achieve their milestones - losing bets automatically fund the projects, while winners earn MNT rewards and token allocation rights:
-- 🎲 **Prediction Markets** - Bet on whether projects will hit their milestones
+- 🎲 **Prediction Markets** - Bet on whether projects will hit their milestones...
 - 💰 **Crowdfunding** - Losing bets automatically fund winning projects
 - 🏆 **Reputation System** - Top predictors earn rewards & token allocation rights
 - ⚡ **Zero Waste** - Every MNT staked either rewards winners or funds projects
