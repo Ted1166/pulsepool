@@ -110,10 +110,15 @@ contract PredictionMarket is Ownable, ReentrancyGuard {
         uint256 milestoneIndex,
         address projectOwner,
         uint256 daysUntilDeadline
-    ) external onlyOwner returns (uint256) {
+    ) external returns (uint256) {
         require(projectMilestoneMarket[projectId][milestoneIndex] == 0, "Market already exists");
         require(projectOwner != address(0), "Invalid owner");
         require(daysUntilDeadline > 0, "Invalid deadline");
+
+        require(
+            msg.sender == owner() || msg.sender == projectOwner,
+            "Only contract owner or project owner can create markets"
+        );
         
         uint256 marketId = marketCounter++;
         uint256 deadline = block.timestamp + (daysUntilDeadline * 1 days);

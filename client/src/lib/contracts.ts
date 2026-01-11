@@ -28,10 +28,10 @@ export const mantleSepolia = defineChain({
 
 export const CONTRACTS = {
   mantleSepolia: {
-    ProjectRegistry: "0xf033A7Ff995a2A87C2ba4748bfF7626D6482Da64",
-    PredictionMarket: "0x9B05c7A71a02F39B18e979E4F84b784aFed3c284",
-    FundingPool: "0x87bd5D00E3c7AB3643Ed6662f12090369a6c8E76",
-    ReputationNFT: "0x88AFEEcEf3f8bd68D6D32290DED44bFd64091a60",
+    ProjectRegistry: "0x19bFA8C3B028316BAFeC2fD4E091c48a2F05ee9A",
+    PredictionMarket: "0x1f6ED97Bb09909A7922BC86C6e29ecd56D946C90",
+    FundingPool: "0x92a2EFA010ea55AbcD72FEa06244b38B39118069",
+    ReputationNFT: "0x4aCCc82769df3B61B3Aff5c8733b3F5458cb919f",
   },
 };
 
