@@ -5,75 +5,106 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, Plus, TrendingUp, Loader2, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAllProjects } from "@/hooks/useProjects";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import ChatAgent from "@/agent/ChatAgent";
 import { ProjectCard } from "@/components/ProjectCard";
 
 const Projects = () => {
-  const { data: projects, isLoading } = useAllProjects();
+  const { data: projects, isLoading, error } = useAllProjects();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+
+  const projectsArray = useMemo(() => (projects as any[]) || [], [projects]);
+
+  const filteredProjects = useMemo(() => {
+    return projectsArray.filter((project) => {
+      const name = project.name || project[2] || "";
+      const description = project.description || project[3] || "";
+      const category = project.category || project[4] || "";
+
+      const matchesSearch = 
+        name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        category.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchesCategory = 
+        selectedCategory === "all" || 
+        category.toLowerCase() === selectedCategory.toLowerCase();
+
+      return matchesSearch && matchesCategory;
+    });
+  }, [projectsArray, searchQuery, selectedCategory]);
+
+  const categories = useMemo(() => {
+    return ["all", ...new Set(projectsArray.map(p => 
+      (p.category || p[4] || "Other").toLowerCase()
+    ))];
+  }, [projectsArray]);
+
+  const trendingProjects = useMemo(() => {
+    return [...filteredProjects].sort((a, b) => {
+      const aPredictions = Number(a.totalPredictions || a[11] || 0n);
+      const bPredictions = Number(b.totalPredictions || b[11] || 0n);
+      return bPredictions - aPredictions;
+    });
+  }, [filteredProjects]);
+
+  const newestProjects = useMemo(() => {
+    return [...filteredProjects].sort((a, b) => {
+      const aDate = Number(a.submissionDate || a[7] || 0n);
+      const bDate = Number(b.submissionDate || b[7] || 0n);
+      return bDate - aDate;
+    });
+  }, [filteredProjects]);
+
+  const fundingProjects = useMemo(() => {
+    return [...filteredProjects].sort((a, b) => {
+      const aGoal = a.fundingGoal || a[6] || 0n;
+      const aRaised = a.totalFundsRaised || a[10] || 0n;
+      const bGoal = b.fundingGoal || b[6] || 0n;
+      const bRaised = b.totalFundsRaised || b[10] || 0n;
+      
+      const aPercent = aGoal > 0n ? Number((aRaised * 100n) / aGoal) : 0;
+      const bPercent = bGoal > 0n ? Number((bRaised * 100n) / bGoal) : 0;
+      
+      return bPercent - aPercent;
+    });
+  }, [filteredProjects]);
 
   if (isLoading) {
     return (
       <div className="min-h-screen">
         <Header />
-        <main className="pt-24 pb-16 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <main className="pt-24 pb-16 flex flex-col items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+          <p className="text-muted-foreground">Loading projects...</p>
         </main>
       </div>
     );
   }
 
-  const projectsArray = (projects as any[]) || [];
-
-  // Filter projects by search and category
-  const filteredProjects = projectsArray.filter((project) => {
-    const name = project.name || project[2] || "";
-    const description = project.description || project[3] || "";
-    const category = project.category || project[4] || "";
-
-    const matchesSearch = 
-      name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      category.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesCategory = 
-      selectedCategory === "all" || 
-      category.toLowerCase() === selectedCategory.toLowerCase();
-
-    return matchesSearch && matchesCategory;
-  });
-
-  // Get unique categories
-  const categories = ["all", ...new Set(projectsArray.map(p => 
-    (p.category || p[4] || "Other").toLowerCase()
-  ))];
-
-  // Sort projects for different tabs
-  const trendingProjects = [...filteredProjects].sort((a, b) => {
-    const aPredictions = Number(a.totalPredictions || a[11] || 0n);
-    const bPredictions = Number(b.totalPredictions || b[11] || 0n);
-    return bPredictions - aPredictions;
-  });
-
-  const newestProjects = [...filteredProjects].sort((a, b) => {
-    const aDate = Number(a.submissionDate || a[7] || 0n);
-    const bDate = Number(b.submissionDate || b[7] || 0n);
-    return bDate - aDate;
-  });
-
-  const fundingProjects = [...filteredProjects].sort((a, b) => {
-    const aGoal = a.fundingGoal || a[6] || 0n;
-    const aRaised = a.totalFundsRaised || a[10] || 0n;
-    const bGoal = b.fundingGoal || b[6] || 0n;
-    const bRaised = b.totalFundsRaised || b[10] || 0n;
-    
-    const aPercent = aGoal > 0n ? Number((aRaised * 100n) / aGoal) : 0;
-    const bPercent = bGoal > 0n ? Number((bRaised * 100n) / bGoal) : 0;
-    
-    return bPercent - aPercent;
-  });
+  if (error) {
+    return (
+      <div className="min-h-screen">
+        <Header />
+        <main className="pt-24 pb-16">
+          <div className="container mx-auto px-4 text-center">
+            <div className="text-yellow-500 text-4xl mb-4">⚠️</div>
+            <h2 className="text-2xl font-bold mb-4">Unable to Load Projects</h2>
+            <p className="text-muted-foreground mb-4">
+              We're experiencing connectivity issues with the Mantle network.
+            </p>
+            <p className="text-sm text-muted-foreground mb-8">
+              This usually happens due to RPC rate limiting. Please try again in a moment.
+            </p>
+            <Button variant="hero" onClick={() => window.location.reload()}>
+              Retry
+            </Button>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   const ProjectGrid = ({ projects }: { projects: any[] }) => {
     if (projects.length === 0) {
@@ -105,7 +136,7 @@ const Projects = () => {
           const category = project.category || project[4] || "Other";
           const fundingGoal = project.fundingGoal || project[6] || 0n;
           const createdAt = project.submissionDate || project[7] || 0n;
-          const status = project.status ?? project[8] ?? 0; // Project status
+          const status = project.status ?? project[8] ?? 0;
           const milestoneIds = project.milestoneIds || project[9] || [];
           const fundingRaised = project.totalFundsRaised || project[10] || 0n;
           const totalPredictions = project.totalPredictions || project[11] || 0n;

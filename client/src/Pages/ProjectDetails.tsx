@@ -32,35 +32,55 @@ const ProjectDetail = () => {
   const [betAmount, setBetAmount] = useState("");
   const [selectedMilestone, setSelectedMilestone] = useState(0);
   const [viewCount, setViewCount] = useState(0);
+  const [createMarketError, setCreateMarketError] = useState<string | null>(null);
   
   const { data: project, isLoading: projectLoading, isError: projectError } = useProject(Number(id));
   const { data: milestones, isLoading: milestonesLoading } = useProjectMilestones(Number(id));
-  const { data: market } = useMarket(Number(id), selectedMilestone);
+  const { data: market, refetch: refetchMarket } = useMarket(Number(id), selectedMilestone);
   const { placeBet, isPending, isConfirming, isSuccess, isError: betError } = usePlaceBet();
-  const { createMarket, isPending: isCreatingMarket, isConfirming: isConfirmingMarket, isSuccess: isMarketCreated } = useCreateMarket();
+  const { 
+    createMarket, 
+    isPending: isCreatingMarket, 
+    isConfirming: isConfirmingMarket, 
+    isSuccess: isMarketCreated,
+    error: marketCreationError 
+  } = useCreateMarket();
 
   const marketData = market as any;
   const { data: hasUserBet } = useHasUserBet(marketData?.id ? Number(marketData.id) : undefined);
 
-
+  // Track view only once on mount
   useEffect(() => {
-  if (id) {
-    const projectId = Number(id);
-    const isNewView = trackProjectView(projectId, address);
-    
-    if (isNewView) {
-      console.log(`✅ New view tracked for project ${projectId}`);
-    } else {
-      console.log(`👁️ Duplicate view prevented for project ${projectId}`);
+    if (id) {
+      const projectId = Number(id);
+      const isNewView = trackProjectView(projectId, address);
+      
+      if (isNewView) {
+        console.log(`✅ New view tracked for project ${projectId}`);
+      }
+      
+      setViewCount(getProjectViews(projectId));
     }
-    
-    setViewCount(getProjectViews(projectId));
+  }, [id]); // Remove address from dependencies to prevent re-tracking
+
+  // Refetch market data when market is created
+  useEffect(() => {
+    if (isMarketCreated) {
+      console.log("Market created successfully, refetching...");
+      setTimeout(() => {
+        refetchMarket();
+      }, 2000);
     }
-  }, [id, address]);
+  }, [isMarketCreated, refetchMarket]);
 
   const handlePlaceBet = async (predictYes: boolean) => {
     if (!betAmount || !id || Number(betAmount) < 0.01) {
       alert("Minimum bet amount is 0.01 MNT");
+      return;
+    }
+    
+    if (!marketData || !marketData.id || marketData.id === 0n) {
+      alert("No market exists for this milestone yet");
       return;
     }
     
@@ -73,8 +93,10 @@ const ProjectDetail = () => {
   };
 
   const handleCreateMarket = async () => {
+    setCreateMarketError(null);
+    
     if (!id || !project) {
-      alert("Project data not loaded");
+      setCreateMarketError("Project data not loaded");
       return;
     }
 
@@ -84,24 +106,66 @@ const ProjectDetail = () => {
       
       const milestonesArray = (milestones as any[]) || [];
       if (selectedMilestone >= milestonesArray.length) {
-        alert("Invalid milestone selected");
+        setCreateMarketError("Invalid milestone selected");
         return;
       }
       
       const milestone = milestonesArray[selectedMilestone];
       const targetDate = milestone.targetDate ?? milestone[2] ?? 0n;
-      const daysUntilDeadline = Math.max(
-        1,
-        Math.floor((Number(targetDate) - Date.now() / 1000) / 86400)
-      );
+      
+      // Validate target date
+      const targetTimestamp = Number(targetDate);
+      const currentTimestamp = Math.floor(Date.now() / 1000);
+      
+      if (targetTimestamp <= currentTimestamp) {
+        setCreateMarketError("Milestone target date must be in the future");
+        return;
+      }
+      
+      // Calculate days until deadline (minimum 1 day)
+      const secondsUntilDeadline = targetTimestamp - currentTimestamp;
+      const daysUntilDeadline = Math.max(1, Math.ceil(secondsUntilDeadline / 86400));
+
+      console.log("=== Creating Market ===");
+      console.log("Project ID:", id);
+      console.log("Milestone Index:", selectedMilestone);
+      console.log("Creator:", creator);
+      console.log("Days Until Deadline:", daysUntilDeadline);
+      console.log("Target Date:", new Date(targetTimestamp * 1000).toISOString());
 
       await createMarket(Number(id), selectedMilestone, creator, daysUntilDeadline);
       
-      alert("Market created successfully! The page will refresh.");
-      setTimeout(() => window.location.reload(), 2000);
+      // Show success message
+      alert("Market created successfully! Refreshing...");
+      
+      // Refresh the page after a delay
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+      
     } catch (error: any) {
-      console.error('Failed to create market:', error);
-      alert(`Failed to create market: ${error.message || 'Unknown error'}`);
+      console.error('=== Failed to create market ===', error);
+      
+      let errorMessage = "Failed to create market";
+      
+      if (error.message) {
+        if (error.message.includes('user rejected') || error.message.includes('User rejected')) {
+          errorMessage = "Transaction cancelled by user";
+        } else if (error.message.includes('insufficient funds')) {
+          errorMessage = "Insufficient MNT balance for gas fees";
+        } else if (error.message.includes('Market already exists')) {
+          errorMessage = "A market already exists for this milestone";
+        } else if (error.message.includes('Invalid milestone')) {
+          errorMessage = "Invalid milestone index";
+        } else if (error.message.includes('Deadline too short')) {
+          errorMessage = "Milestone deadline must be at least 1 day in the future";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      setCreateMarketError(errorMessage);
+      alert(errorMessage);
     }
   };
 
@@ -219,11 +283,22 @@ const ProjectDetail = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {createMarketError && (
+                    <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-lg">
+                      <div className="flex items-center gap-2 text-red-500">
+                        <AlertCircle className="w-5 h-5" />
+                        <p className="font-semibold">{createMarketError}</p>
+                      </div>
+                    </div>
+                  )}
+                  
                   {milestonesArray.length > 0 ? (
                     milestonesArray.map((milestone, idx) => {
                       const milestoneDescription = milestone.description ?? milestone[1] ?? `Milestone ${idx + 1}`;
                       const targetDate = milestone.targetDate ?? milestone[2] ?? 0n;
                       const outcomeAchieved = milestone.outcomeAchieved ?? milestone[4] ?? false;
+                      const targetTimestamp = Number(targetDate);
+                      const isInFuture = targetTimestamp > Date.now() / 1000;
                       
                       return (
                         <div
@@ -247,8 +322,11 @@ const ProjectDetail = () => {
                                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                                   <div className="flex items-center gap-1">
                                     <Calendar className="w-3 h-3" />
-                                    {targetDate > 0n ? new Date(Number(targetDate) * 1000).toLocaleDateString() : 'TBD'}
+                                    {targetDate > 0n ? new Date(targetTimestamp * 1000).toLocaleDateString() : 'TBD'}
                                   </div>
+                                  {!isInFuture && !outcomeAchieved && (
+                                    <Badge variant="destructive" className="text-xs">Past Due</Badge>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -268,7 +346,12 @@ const ProjectDetail = () => {
                                   <p className="text-sm text-muted-foreground">
                                     No prediction market exists for this milestone yet.
                                   </p>
-                                  {isProjectOwner ? (
+                                  {!isInFuture && (
+                                    <p className="text-xs text-yellow-600">
+                                      ⚠️ This milestone date has passed. Markets can only be created for future dates.
+                                    </p>
+                                  )}
+                                  {isProjectOwner && isInFuture ? (
                                     <Button
                                       variant="hero"
                                       size="sm"
@@ -284,6 +367,10 @@ const ProjectDetail = () => {
                                         '🏗️ Create Market'
                                       )}
                                     </Button>
+                                  ) : isProjectOwner && !isInFuture ? (
+                                    <p className="text-xs text-muted-foreground">
+                                      Cannot create market for past milestone dates
+                                    </p>
                                   ) : (
                                     <p className="text-xs text-muted-foreground">
                                       Ask the project owner to create a market for this milestone
@@ -302,65 +389,65 @@ const ProjectDetail = () => {
                                   </div>
                                   
                                   {!isConnected ? (
-                                  <p className="text-center text-sm text-muted-foreground py-4">
-                                    Connect your wallet to place predictions
-                                  </p>
-                                ) : isProjectOwner ? (
-                                  <div className="text-center py-4 space-y-2">
-                                    <AlertCircle className="w-8 h-8 text-warning mx-auto" />
-                                    <p className="text-sm text-warning font-medium">
-                                      ⚠️ Project owners cannot bet on their own milestones
+                                    <p className="text-center text-sm text-muted-foreground py-4">
+                                      Connect your wallet to place predictions
                                     </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      This prevents conflicts of interest
-                                    </p>
-                                  </div>
-                                ) : hasUserBet ? (
-                                  <div className="text-center py-4 space-y-2">
-                                    <CheckCircle2 className="w-8 h-8 text-success mx-auto" />
-                                    <p className="text-sm text-success font-medium">
-                                      ✅ You've already placed your prediction
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      Only one prediction per milestone allowed
-                                    </p>
-                                  </div>
-                                ) : (
-                                  <div className="grid grid-cols-2 gap-2">
-                                    <Button 
-                                      variant="default"
-                                      size="sm" 
-                                      className="w-full bg-success hover:bg-success/80"
-                                      onClick={() => handlePlaceBet(true)}
-                                      disabled={isPending || isConfirming || !betAmount}
-                                    >
-                                      {isPending || isConfirming ? (
-                                        <>
-                                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                                          {isPending ? 'Approving...' : 'Processing...'}
-                                        </>
-                                      ) : (
-                                        'Bet YES'
-                                      )}
-                                    </Button>
-                                    <Button 
-                                      variant="destructive" 
-                                      size="sm" 
-                                      className="w-full"
-                                      onClick={() => handlePlaceBet(false)}
-                                      disabled={isPending || isConfirming || !betAmount}
-                                    >
-                                      {isPending || isConfirming ? (
-                                        <>
-                                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                                          {isPending ? 'Approving...' : 'Processing...'}
-                                        </>
-                                      ) : (
-                                        'Bet NO'
-                                      )}
-                                    </Button>
-                                  </div>
-                                )}
+                                  ) : isProjectOwner ? (
+                                    <div className="text-center py-4 space-y-2">
+                                      <AlertCircle className="w-8 h-8 text-warning mx-auto" />
+                                      <p className="text-sm text-warning font-medium">
+                                        ⚠️ Project owners cannot bet on their own milestones
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        This prevents conflicts of interest
+                                      </p>
+                                    </div>
+                                  ) : hasUserBet ? (
+                                    <div className="text-center py-4 space-y-2">
+                                      <CheckCircle2 className="w-8 h-8 text-success mx-auto" />
+                                      <p className="text-sm text-success font-medium">
+                                        ✅ You've already placed your prediction
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        Only one prediction per milestone allowed
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <Button 
+                                        variant="default"
+                                        size="sm" 
+                                        className="w-full bg-success hover:bg-success/80"
+                                        onClick={() => handlePlaceBet(true)}
+                                        disabled={isPending || isConfirming || !betAmount}
+                                      >
+                                        {isPending || isConfirming ? (
+                                          <>
+                                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                            {isPending ? 'Approving...' : 'Processing...'}
+                                          </>
+                                        ) : (
+                                          'Bet YES'
+                                        )}
+                                      </Button>
+                                      <Button 
+                                        variant="destructive" 
+                                        size="sm" 
+                                        className="w-full"
+                                        onClick={() => handlePlaceBet(false)}
+                                        disabled={isPending || isConfirming || !betAmount}
+                                      >
+                                        {isPending || isConfirming ? (
+                                          <>
+                                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                            {isPending ? 'Approving...' : 'Processing...'}
+                                          </>
+                                        ) : (
+                                          'Bet NO'
+                                        )}
+                                      </Button>
+                                    </div>
+                                  )}
 
                                   {isSuccess && (
                                     <p className="text-center text-sm text-success mt-2">
@@ -408,14 +495,14 @@ const ProjectDetail = () => {
                     </TabsContent>
                     <TabsContent value="team" className="mt-4">
                       {isProjectOwner && (
-                      <div className="mt-6">
-                        <MilestoneManager
-                          projectId={Number(id)}
-                          milestones={milestonesArray}
-                          isOwner={isProjectOwner}
-                        />
-                      </div>
-                    )}
+                        <div className="mt-6">
+                          <MilestoneManager
+                            projectId={Number(id)}
+                            milestones={milestonesArray}
+                            isOwner={isProjectOwner}
+                          />
+                        </div>
+                      )}
                       <div>
                         <h3 className="font-semibold mb-2">Project Creator</h3>
                         <div className="flex items-center gap-3">
@@ -517,6 +604,8 @@ const ProjectDetail = () => {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Views</span>
                       <span className="font-semibold">{viewCount}</span>
+                    </div>
+                    <div className="flex justify-between">
                       <span className="text-muted-foreground">Category</span>
                       <Badge variant="secondary">{category}</Badge>
                     </div>

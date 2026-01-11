@@ -13,9 +13,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatEther } from "viem";
-import { useIsFollowing, useFollowProject, useUnfollowProject, useProjectFollowers } from "@/hooks/usePredictions";
-import { useAccount } from "wagmi";
-import { useState, useEffect } from "react";
+import { memo, useState, useEffect } from "react";
 
 interface ProjectCardProps {
   id: number;
@@ -30,7 +28,7 @@ interface ProjectCardProps {
   status?: number;
 }
 
-export const ProjectCard = ({
+export const ProjectCard = memo(({
   id,
   name,
   description,
@@ -41,18 +39,26 @@ export const ProjectCard = ({
   milestonesCount,
   createdAt,
 }: ProjectCardProps) => {
-  const { isConnected } = useAccount();
   const [views, setViews] = useState(0);
-  
-  const { data: isFollowing, refetch: refetchFollowing } = useIsFollowing(id);
-  const { followProject, isPending: isFollowing_Pending } = useFollowProject();
-  const { unfollowProject, isPending: isUnfollowing } = useUnfollowProject();
-  const { followerCount, refetch: refetchFollowers } = useProjectFollowers(id);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followerCount, setFollowerCount] = useState(0);
 
   useEffect(() => {
-    const viewsKey = `project_views_${id}`;
-    const storedViews = localStorage.getItem(viewsKey);
-    setViews(storedViews ? parseInt(storedViews) : 0);
+    try {
+      const viewsKey = `project_views_${id}`;
+      const storedViews = localStorage.getItem(viewsKey);
+      setViews(storedViews ? parseInt(storedViews) : 0);
+
+      const followingKey = `following_${id}`;
+      const isFollowingStored = localStorage.getItem(followingKey) === 'true';
+      setIsFollowing(isFollowingStored);
+
+      const followersKey = `followers_${id}`;
+      const storedFollowers = localStorage.getItem(followersKey);
+      setFollowerCount(storedFollowers ? parseInt(storedFollowers) : 0);
+    } catch (error) {
+      console.error('Error loading cached data:', error);
+    }
   }, [id]);
 
   const fundingPercentage = fundingGoal > 0n 
@@ -71,24 +77,18 @@ export const ProjectCard = ({
     e.preventDefault();
     e.stopPropagation();
     
-    if (!isConnected) {
-      alert("Please connect your wallet to follow projects");
-      return;
-    }
+    const newFollowingState = !isFollowing;
+    setIsFollowing(newFollowingState);
+    setFollowerCount(prev => newFollowingState ? prev + 1 : Math.max(0, prev - 1));
 
     try {
-      if (isFollowing) {
-        await unfollowProject(id);
-      } else {
-        await followProject(id);
-      }
+      localStorage.setItem(`following_${id}`, String(newFollowingState));
+      localStorage.setItem(`followers_${id}`, String(followerCount + (newFollowingState ? 1 : -1)));
       
-      setTimeout(() => {
-        refetchFollowing();
-        refetchFollowers();
-      }, 2000);
     } catch (error) {
       console.error("Follow/Unfollow error:", error);
+      setIsFollowing(!newFollowingState);
+      setFollowerCount(prev => newFollowingState ? prev - 1 : prev + 1);
     }
   };
 
@@ -114,7 +114,6 @@ export const ProjectCard = ({
               size="sm"
               className={`h-8 px-2 ${isFollowing ? 'text-primary' : 'text-muted-foreground'}`}
               onClick={handleFollow}
-              disabled={isFollowing_Pending || isUnfollowing}
             >
               <Heart 
                 className={`w-4 h-4 ${isFollowing ? 'fill-primary' : ''}`} 
@@ -206,4 +205,11 @@ export const ProjectCard = ({
       </Card>
     </Link>
   );
-};
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.id === nextProps.id &&
+    prevProps.fundingRaised === nextProps.fundingRaised &&
+    prevProps.totalPredictions === nextProps.totalPredictions &&
+    prevProps.status === nextProps.status
+  );
+});
