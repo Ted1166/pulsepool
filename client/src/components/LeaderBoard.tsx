@@ -154,11 +154,11 @@ export const Leaderboard = ({
                   <div className="flex items-center gap-4 text-sm flex-wrap">
                     <div>
                       <span className="text-muted-foreground">Staked: </span>
-                      <span className="font-semibold">{formatEther(predictor.totalStaked)} BNB</span>
+                      <span className="font-semibold">{formatEther(predictor.totalStaked)} MNT</span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Won: </span>
-                      <span className="font-semibold text-success">{formatEther(predictor.totalWon)} BNB</span>
+                      <span className="font-semibold text-success">{formatEther(predictor.totalWon)} MNT</span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Score: </span>

@@ -55,6 +55,128 @@ export function useMarket(projectId: number, milestoneIndex: number) {
   return result
 }
 
+// ========================================
+// PROJECT ENGAGEMENT HOOKS
+// ========================================
+
+/**
+ * Follow a project
+ */
+export function useFollowProject() {
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  const followProject = async (projectId: number) => {
+    try {
+      console.log('👥 Following project:', projectId);
+
+      const txHash = await writeContractAsync({
+        address: ACTIVE_CONTRACTS.PredictionMarket as `0x${string}`,
+        abi: PREDICTION_MARKET_ABI,
+        functionName: 'followProject',
+        args: [BigInt(projectId)],
+      }as any);
+
+      console.log('✅ Follow transaction:', txHash);
+      return txHash;
+    } catch (err: any) {
+      console.error('❌ Follow project error:', err);
+      throw err;
+    }
+  };
+
+  return {
+    followProject,
+    hash,
+    isPending,
+    isConfirming,
+    isSuccess,
+    isError: !!error,
+    error,
+  };
+}
+
+/**
+ * Unfollow a project
+ */
+export function useUnfollowProject() {
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  const unfollowProject = async (projectId: number) => {
+    try {
+      console.log('👋 Unfollowing project:', projectId);
+
+      const txHash = await writeContractAsync({
+        address: ACTIVE_CONTRACTS.PredictionMarket as `0x${string}`,
+        abi: PREDICTION_MARKET_ABI,
+        functionName: 'unfollowProject',
+        args: [BigInt(projectId)],
+      }as any);
+
+      console.log('✅ Unfollow transaction:', txHash);
+      return txHash;
+    } catch (err: any) {
+      console.error('❌ Unfollow project error:', err);
+      throw err;
+    }
+  };
+
+  return {
+    unfollowProject,
+    hash,
+    isPending,
+    isConfirming,
+    isSuccess,
+    isError: !!error,
+    error,
+  };
+}
+
+/**
+ * Check if user is following a project
+ */
+export function useIsFollowing(projectId: number) {
+  const { address } = useAccount();
+
+  return useReadContract({
+    address: ACTIVE_CONTRACTS.PredictionMarket as `0x${string}`,
+    abi: PREDICTION_MARKET_ABI,
+    functionName: 'isUserFollowing',
+    args: projectId !== undefined && address ? [BigInt(projectId), address] : undefined,
+    chainId: ACTIVE_CHAIN.id,
+    query: {
+      enabled: projectId !== undefined && !!address,
+      refetchInterval: 5000,
+    },
+  });
+}
+
+/**
+ * Get project followers count
+ */
+export function useProjectFollowers(projectId: number) {
+  const result = useReadContract({
+    address: ACTIVE_CONTRACTS.PredictionMarket as `0x${string}`,
+    abi: PREDICTION_MARKET_ABI,
+    functionName: 'getProjectFollowers',
+    args: projectId !== undefined ? [BigInt(projectId)] : undefined,
+    chainId: ACTIVE_CHAIN.id,
+    query: {
+      enabled: projectId !== undefined,
+      refetchInterval: 10000,
+    },
+  });
+
+  const followers = (result.data as any[]) || [];
+  
+  return {
+    ...result,
+    followerCount: followers.length,
+    followers: followers,
+  };
+}
+
 /**
  * Check if market exists for a project milestone
  */
@@ -173,12 +295,11 @@ export function useCreateMarket() {
           BigInt(milestoneIndex),
           projectOwnerAddress as `0x${string}`,
           BigInt(daysUntilDeadline)
-        ],
-        gas: 300000n,
-      } as any);
+        ]
+      }as any );
 
       console.log('✅ Market creation tx:', txHash);
-      console.log('🔗 View on BSCScan:', `https://testnet.bscscan.com/tx/${txHash}`);
+      console.log('🔗 View on Mantle Explorer:', `https://explorer.sepolia.mantle.xyz/tx/${txHash}`);
       
       return txHash;
     } catch (err) {
@@ -304,12 +425,12 @@ export function usePlaceBet() {
       if (value < minBet) {
         throw new Error(
           `❌ Bet amount too small.\n\n` +
-          `Minimum bet: ${formatEther(minBet)} BNB\n` +
-          `Your bet: ${amount} BNB`
+          `Minimum bet: ${formatEther(minBet)} MNT\n` +
+          `Your bet: ${amount} MNT`
         );
       }
       
-      console.log('💰 Min bet amount:', formatEther(minBet), 'BNB');
+      console.log('💰 Min bet amount:', formatEther(minBet), 'MNT');
       
       // 6. Check if user already bet on this market
       if (address) {
@@ -343,11 +464,10 @@ export function usePlaceBet() {
           predictYes
         ],
         value,
-        gas: 500000n,
       } as any);
       
       console.log('✅ Transaction submitted:', txHash);
-      console.log('🔗 View on BSCScan:', `https://testnet.bscscan.com/tx/${txHash}`);
+      console.log('🔗 View on Mantle Explorer:', `https://explorer.sepolia.mantle.xyz/tx/${txHash}`);
       
       return txHash;
       
@@ -361,7 +481,7 @@ export function usePlaceBet() {
       if (errorMessage.includes('user rejected')) {
         errorMessage = '❌ Transaction was rejected by user.';
       } else if (errorMessage.includes('insufficient funds')) {
-        errorMessage = '❌ Insufficient BNB in your wallet to place this bet.';
+        errorMessage = '❌ Insufficient MNT in your wallet to place this bet.';
       } else if (errorMessage.includes('Market does not exist')) {
         errorMessage = '❌ Market not found. Please create a prediction market for this milestone first.';
       } else if (errorMessage.includes('Market closed')) {
@@ -421,7 +541,7 @@ export function useClaimRewards() {
       } as any)
       
       console.log('✅ Claim transaction hash:', txHash);
-      console.log('🔗 View on BSCScan:', `https://testnet.bscscan.com/tx/${txHash}`);
+      console.log('🔗 View on Mantle Explorer:', `https://explorer.sepolia.mantle.xyz/tx/${txHash}`);
       
       return txHash;
     } catch (err: any) {
@@ -488,18 +608,18 @@ interface UserBet {
 function calculateReputationScore(
   winRate: number,
   totalPredictions: number,
-  totalStakedBNB: number
+  totalStakedMNT: number
 ): number {
   const accuracyScore = winRate * 0.4;
   const volumeScore = Math.min(totalPredictions * 10, 1000) * 0.3;
-  const stakeScore = Math.min(totalStakedBNB * 5, 500) * 0.3;
+  const stakeScore = Math.min(totalStakedMNT * 5, 500) * 0.3;
   
   return Math.round(accuracyScore + volumeScore + stakeScore);
 }
 
 /**
  * Get all unique predictor addresses by querying recent bets
- * ✅ Much more reliable than event scanning for BSC testnet
+ * ✅ Much more reliable than event scanning for Mantle testnet
  */
 async function getAllPredictorAddresses(publicClient: any): Promise<string[]> {
   try {
@@ -633,11 +753,11 @@ export function useTopPredictors(limit: number = 10) {
               ? (correctPredictions / totalPredictions) * 100 
               : 0;
             
-            const totalStakedBNB = parseFloat(formatEther(totalStaked));
+            const totalStakedMNT = parseFloat(formatEther(totalStaked));
             const reputationScore = calculateReputationScore(
               winRate,
               totalPredictions,
-              totalStakedBNB
+              totalStakedMNT
             );
 
             // Check for display name in localStorage

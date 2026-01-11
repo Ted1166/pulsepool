@@ -1,0 +1,11 @@
+{
+  "network": "mantleSepolia",
+  "deployer": "0x2ec236a1e06715712749BCA3c7D242c3b9caE6D7",
+  "deploymentTime": "2026-01-09T06:16:30.322Z",
+  "contracts": {
+    "ProjectRegistry": "0xf033A7Ff995a2A87C2ba4748bfF7626D6482Da64",
+    "PredictionMarket": "0x9B05c7A71a02F39B18e979E4F84b784aFed3c284",
+    "FundingPool": "0x87bd5D00E3c7AB3643Ed6662f12090369a6c8E76",
+    "ReputationNFT": "0x88AFEEcEf3f8bd68D6D32290DED44bFd64091a60"
+  }
+}

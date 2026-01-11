@@ -10,7 +10,7 @@ const steps = [
   {
     icon: TrendingUp,
     title: "Make Predictions",
-    description: "Stake BNB on whether projects will hit their milestones. Back your conviction.",
+    description: "Stake MNT on whether projects will hit their milestones. Back your conviction.",
     color: "text-accent",
   },
   {
@@ -22,7 +22,7 @@ const steps = [
   {
     icon: Award,
     title: "Earn Rewards",
-    description: "Top predictors earn BNB rewards + early token allocations in funded projects.",
+    description: "Top predictors earn MNT rewards + early token allocations in funded projects.",
     color: "text-success",
   },
 ];

@@ -26,7 +26,7 @@ export const Hero = () => {
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/30 mb-8">
             <Zap className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium text-primary">Powered by BNB Chain</span>
+            <span className="text-sm font-medium text-primary">Powered by Mantle</span>
           </div>
 
           <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-primary bg-clip-text text-transparent">
@@ -62,9 +62,9 @@ export const Hero = () => {
                 {isLoading ? (
                   <div className="h-9 w-24 mx-auto bg-muted animate-pulse rounded" />
                 ) : stats ? (
-                  `${formatEther(stats.totalStaked)} BNB`
+                  `${formatEther(stats.totalStaked)} MNT`
                 ) : (
-                  '0 BNB'
+                  '0 MNT'
                 )}
               </div>
               <div className="text-muted-foreground">Total Predicted</div>

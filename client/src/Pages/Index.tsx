@@ -1,3 +1,4 @@
+import ChatAgent from "@/agent/ChatAgent";
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
 import { HowItWorks } from "@/components/HowItWorks";
@@ -8,6 +9,7 @@ const Index = () => {
       <Header />
       <Hero />
       <HowItWorks />
+      <ChatAgent/>
     </div>
   );
 };

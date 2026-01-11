@@ -1,188 +1,158 @@
 import hre from "hardhat";
-import { network } from "hardhat";
-import * as fs from "fs";
-import * as path from "path";
-
-interface DeploymentAddresses {
-  network: string;
-  chainId: string;
-  deployer: string;
-  projectRegistry: string;
-  predictionMarket: string;
-  fundingPool: string;
-  reputationNFT: string;
-  deploymentTime: string;
-  blockNumber: string;
-}
+import fs from "fs";
+import path from "path";
 
 async function main() {
-  const networkName = (hre.network as any).name;
+  // Import ethers from hre
+  const { ethers } = hre;
+  const networkName = hre.network.name;
 
   console.log("\n🚀 ═══════════════════════════════════════════════════════");
   console.log("   PREDICT & FUND - Smart Contract Deployment");
+  console.log("   Network:", networkName);
   console.log("═══════════════════════════════════════════════════════\n");
 
-  // Get network connection using Hardhat 3 API
-  const { viem } = await network.connect();
-  const publicClient = await viem.getPublicClient();
-  const [walletClient] = await viem.getWalletClients();
+  // Get signers
+  const [deployer] = await ethers.getSigners();
+  const balance = await ethers.provider.getBalance(deployer.address);
 
-  const deployer = walletClient.account.address;
-  const chainId = await publicClient.getChainId();
-  const balance = await publicClient.getBalance({ address: deployer });
-  const blockNumber = await publicClient.getBlockNumber();
-
-  console.log("📋 Network Information:");
+  console.log("📋 Deployment Information:");
   console.log("─────────────────────────────────────────────────────────");
-  console.log("  Network:      ", networkName);
-  console.log("  Chain ID:     ", chainId);
-  console.log("  Deployer:     ", deployer);
-  console.log("  Balance:      ", (Number(balance) / 1e18).toFixed(4), "ETH/BNB");
-  console.log("  Block Number: ", blockNumber);
+  console.log("  Deployer address:", deployer.address);
+  console.log("  Account balance: ", ethers.formatEther(balance), "MNT/ETH");
   console.log("─────────────────────────────────────────────────────────\n");
 
   // Check balance
-  const minBalance = networkName === "hardhat" ? 0n : 100000000000000000n; // 0.1 ETH/BNB
-  if (balance < minBalance) {
-    throw new Error("❌ Insufficient balance! Need at least 0.1 ETH/BNB for deployment");
+  if (balance < ethers.parseEther("0.1")) {
+    throw new Error("❌ Insufficient balance! Need at least 0.1 MNT/ETH");
   }
-
-  const addresses: Partial<DeploymentAddresses> = {
-    network: networkName,
-    chainId: chainId.toString(),
-    deployer: deployer,
-    deploymentTime: new Date().toISOString(),
-    blockNumber: blockNumber.toString(),
-  };
 
   // ================================================
   // 1. Deploy ProjectRegistry
   // ================================================
   console.log("📦 [1/4] Deploying ProjectRegistry...");
-  const projectRegistry = await viem.deployContract("ProjectRegistry");
-  addresses.projectRegistry = projectRegistry.address;
-
-  console.log("✅ ProjectRegistry deployed!");
-  console.log("   Address:", projectRegistry.address);
-  console.log("   Waiting for block confirmation...\n");
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  const ProjectRegistry = await ethers.getContractFactory("ProjectRegistry");
+  const projectRegistry = await ProjectRegistry.deploy();
+  await projectRegistry.waitForDeployment();
+  
+  const projectRegistryAddress = await projectRegistry.getAddress();
+  console.log("✅ ProjectRegistry deployed at:", projectRegistryAddress);
+  console.log();
 
   // ================================================
   // 2. Deploy PredictionMarket
   // ================================================
   console.log("📦 [2/4] Deploying PredictionMarket...");
-  const predictionMarket = await viem.deployContract("PredictionMarket", [
-    projectRegistry.address,
-  ]);
-  addresses.predictionMarket = predictionMarket.address;
-
-  console.log("✅ PredictionMarket deployed!");
-  console.log("   Address:", predictionMarket.address);
-  console.log("   Constructor: [", projectRegistry.address, "]");
-  console.log("   Waiting for block confirmation...\n");
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  const PredictionMarket = await ethers.getContractFactory("PredictionMarket");
+  const predictionMarket = await PredictionMarket.deploy(projectRegistryAddress);
+  await predictionMarket.waitForDeployment();
+  
+  const predictionMarketAddress = await predictionMarket.getAddress();
+  console.log("✅ PredictionMarket deployed at:", predictionMarketAddress);
+  console.log();
 
   // ================================================
   // 3. Deploy FundingPool
   // ================================================
   console.log("📦 [3/4] Deploying FundingPool...");
-  const fundingPool = await viem.deployContract("FundingPool", [
-    projectRegistry.address,
-    predictionMarket.address,
-  ]);
-  addresses.fundingPool = fundingPool.address;
-
-  console.log("✅ FundingPool deployed!");
-  console.log("   Address:", fundingPool.address);
-  console.log("   Constructor: [", projectRegistry.address, ",", predictionMarket.address, "]");
-  console.log("   Waiting for block confirmation...\n");
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  const FundingPool = await ethers.getContractFactory("FundingPool");
+  const fundingPool = await FundingPool.deploy(
+    projectRegistryAddress,
+    predictionMarketAddress
+  );
+  await fundingPool.waitForDeployment();
+  
+  const fundingPoolAddress = await fundingPool.getAddress();
+  console.log("✅ FundingPool deployed at:", fundingPoolAddress);
+  console.log();
 
   // ================================================
   // 4. Deploy ReputationNFT
   // ================================================
   console.log("📦 [4/4] Deploying ReputationNFT...");
-  const reputationNFT = await viem.deployContract("ReputationNFT", [
-    predictionMarket.address,
-  ]);
-  addresses.reputationNFT = reputationNFT.address;
-
-  console.log("✅ ReputationNFT deployed!");
-  console.log("   Address:", reputationNFT.address);
-  console.log("   Constructor: [", predictionMarket.address, "]");
-  console.log("   Waiting for block confirmation...\n");
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  const ReputationNFT = await ethers.getContractFactory("ReputationNFT");
+  const reputationNFT = await ReputationNFT.deploy(predictionMarketAddress);
+  await reputationNFT.waitForDeployment();
+  
+  const reputationNFTAddress = await reputationNFT.getAddress();
+  console.log("✅ ReputationNFT deployed at:", reputationNFTAddress);
+  console.log();
 
   // ================================================
   // Save Deployment Info
   // ================================================
-  console.log("💾 Saving deployment information...");
+  const deploymentInfo = {
+    network: networkName,
+    deployer: deployer.address,
+    deploymentTime: new Date().toISOString(),
+    contracts: {
+      ProjectRegistry: projectRegistryAddress,
+      PredictionMarket: predictionMarketAddress,
+      FundingPool: fundingPoolAddress,
+      ReputationNFT: reputationNFTAddress,
+    },
+  };
+
   const deploymentsDir = path.join(process.cwd(), "deployments");
   if (!fs.existsSync(deploymentsDir)) {
     fs.mkdirSync(deploymentsDir, { recursive: true });
   }
 
   const filename = `${networkName}_${Date.now()}.json`;
-  const filepath = path.join(deploymentsDir, filename);
-  fs.writeFileSync(filepath, JSON.stringify(addresses, null, 2));
-  
-  // Also save as latest
-  const latestPath = path.join(deploymentsDir, `${networkName}_latest.json`);
-  fs.writeFileSync(latestPath, JSON.stringify(addresses, null, 2));
-  
-  console.log("✅ Saved to:", filename);
-  console.log("✅ Saved to:", `${networkName}_latest.json\n`);
+  fs.writeFileSync(
+    path.join(deploymentsDir, filename),
+    JSON.stringify(deploymentInfo, null, 2)
+  );
+
+  fs.writeFileSync(
+    path.join(deploymentsDir, `${networkName}_latest.json`),
+    JSON.stringify(deploymentInfo, null, 2)
+  );
+
+  console.log("💾 Deployment info saved to:", filename);
+  console.log();
 
   // ================================================
   // Deployment Summary
   // ================================================
-  console.log("\n🎉 ═══════════════════════════════════════════════════════");
+  console.log("🎉 ═══════════════════════════════════════════════════════");
   console.log("   DEPLOYMENT COMPLETE!");
   console.log("═══════════════════════════════════════════════════════");
   console.log("\n📋 Contract Addresses:");
   console.log("─────────────────────────────────────────────────────────");
-  console.log("  ProjectRegistry:  ", projectRegistry.address);
-  console.log("  PredictionMarket: ", predictionMarket.address);
-  console.log("  FundingPool:      ", fundingPool.address);
-  console.log("  ReputationNFT:    ", reputationNFT.address);
+  console.log("  ProjectRegistry:  ", projectRegistryAddress);
+  console.log("  PredictionMarket: ", predictionMarketAddress);
+  console.log("  FundingPool:      ", fundingPoolAddress);
+  console.log("  ReputationNFT:    ", reputationNFTAddress);
   console.log("─────────────────────────────────────────────────────────");
 
-  // Network-specific links
-  if (networkName === "sepolia") {
-    console.log("\n🔗 View on Etherscan:");
+  // Explorer links
+  if (networkName === "mantleSepolia") {
+    console.log("\n🔗 View on Mantle Sepolia Explorer:");
     console.log("─────────────────────────────────────────────────────────");
-    console.log("  ProjectRegistry:   https://sepolia.etherscan.io/address/" + projectRegistry.address);
-    console.log("  PredictionMarket:  https://sepolia.etherscan.io/address/" + predictionMarket.address);
-    console.log("  FundingPool:       https://sepolia.etherscan.io/address/" + fundingPool.address);
-    console.log("  ReputationNFT:     https://sepolia.etherscan.io/address/" + reputationNFT.address);
-  } else if (networkName === "bscTestnet") {
-    console.log("\n🔗 View on BscScan Testnet:");
+    console.log("  ProjectRegistry:   https://explorer.sepolia.mantle.xyz/address/" + projectRegistryAddress);
+    console.log("  PredictionMarket:  https://explorer.sepolia.mantle.xyz/address/" + predictionMarketAddress);
+    console.log("  FundingPool:       https://explorer.sepolia.mantle.xyz/address/" + fundingPoolAddress);
+    console.log("  ReputationNFT:     https://explorer.sepolia.mantle.xyz/address/" + reputationNFTAddress);
+  } else if (networkName === "mantleMainnet") {
+    console.log("\n🔗 View on Mantle Mainnet Explorer:");
     console.log("─────────────────────────────────────────────────────────");
-    console.log("  ProjectRegistry:   https://testnet.bscscan.com/address/" + projectRegistry.address);
-    console.log("  PredictionMarket:  https://testnet.bscscan.com/address/" + predictionMarket.address);
-    console.log("  FundingPool:       https://testnet.bscscan.com/address/" + fundingPool.address);
-    console.log("  ReputationNFT:     https://testnet.bscscan.com/address/" + reputationNFT.address);
-  } else if (networkName === "bscMainnet") {
-    console.log("\n🔗 View on BscScan:");
-    console.log("─────────────────────────────────────────────────────────");
-    console.log("  ProjectRegistry:   https://bscscan.com/address/" + projectRegistry.address);
-    console.log("  PredictionMarket:  https://bscscan.com/address/" + predictionMarket.address);
-    console.log("  FundingPool:       https://bscscan.com/address/" + fundingPool.address);
-    console.log("  ReputationNFT:     https://bscscan.com/address/" + reputationNFT.address);
+    console.log("  ProjectRegistry:   https://explorer.mantle.xyz/address/" + projectRegistryAddress);
+    console.log("  PredictionMarket:  https://explorer.mantle.xyz/address/" + predictionMarketAddress);
+    console.log("  FundingPool:       https://explorer.mantle.xyz/address/" + fundingPoolAddress);
+    console.log("  ReputationNFT:     https://explorer.mantle.xyz/address/" + reputationNFTAddress);
   }
 
   console.log("\n📝 Next Steps:");
   console.log("─────────────────────────────────────────────────────────");
-  console.log("  1. Verify contracts on block explorer");
+  console.log("  1. Verify contracts on block explorer (optional)");
   console.log("  2. Update frontend with contract addresses");
-  console.log("─────────────────────────────────────────────────────────");
+  console.log("  3. Test your deployment");
+  console.log("─────────────────────────────────────────────────────────\n");
 
-  console.log("\n🔍 Verification Commands:");
+  console.log("🔍 Verification Command:");
   console.log("─────────────────────────────────────────────────────────");
-  console.log(`npx hardhat verify --network ${networkName} ${projectRegistry.address}`);
-  console.log(`npx hardhat verify --network ${networkName} ${predictionMarket.address} "${projectRegistry.address}"`);
-  console.log(`npx hardhat verify --network ${networkName} ${fundingPool.address} "${projectRegistry.address}" "${predictionMarket.address}"`);
-  console.log(`npx hardhat verify --network ${networkName} ${reputationNFT.address} "${predictionMarket.address}"`);
+  console.log(`npx hardhat verify --network ${networkName} ${projectRegistryAddress}`);
   console.log("═══════════════════════════════════════════════════════\n");
 }
 

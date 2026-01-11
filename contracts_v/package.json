@@ -1,0 +1,37 @@
+{
+  "name": "contracts_v",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Predict & Fund - Prediction markets meet crowdfunding",
+  "scripts": {
+    "compile": "hardhat compile",
+    "compile:production": "hardhat compile --profile production",
+    "test": "hardhat test",
+    "coverage": "hardhat coverage",
+    "deploy": "hardhat run scripts/deploy.ts",
+    "deploy:sepolia": "hardhat run scripts/deploy.ts --network sepolia",
+    "deploy:mantle-sepolia": "hardhat run scripts/deploy.ts --network mantleSepolia",
+    "deploy:mantle-mainnet": "hardhat run scripts/deploy.ts --network mantleMainnet",
+    "test-flow:sepolia": "hardhat run scripts/test-flow.ts --network sepolia",
+    "test-flow:mantle-sepolia": "hardhat run scripts/test-flow.ts --network mantleSepolia",
+    "deploy:local": "hardhat run scripts/deploy.ts --network hardhat",
+    "test-flow:local": "hardhat run scripts/test-flow.ts --network hardhat",
+    "verify:mantle-sepolia": "hardhat verify --network mantleSepolia",
+    "verify:mantle-mainnet": "hardhat verify --network mantleMainnet",
+    "clean": "hardhat clean",
+    "node": "hardhat node"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.4.0",
+    "chai": "^6.2.1"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ethers": "^4.0.3",
+    "@nomicfoundation/hardhat-verify": "^3.0.6",
+    "@types/chai": "^5.2.3",
+    "@types/node": "^24.10.1",
+    "dotenv": "^17.2.3",
+    "ethers": "^6.16.0",
+    "hardhat": "^3.0.13"
+  }
+}

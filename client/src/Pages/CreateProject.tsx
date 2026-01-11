@@ -5,65 +5,59 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useState, useEffect } from "react";
-import {
-  useWriteContract,
-  useWaitForTransactionReceipt,
-  useAccount,
-  usePublicClient,
-} from "wagmi";
-import { ACTIVE_CONTRACTS, PROJECT_REGISTRY_ABI, PREDICTION_MARKET_ABI } from "@/lib/contracts";
-import { parseEther } from "viem";
+import { useWriteContract, useWaitForTransactionReceipt, useAccount, useBalance } from "wagmi";
+import { ACTIVE_CONTRACTS, PROJECT_REGISTRY_ABI } from "@/lib/contracts";
+import { parseEther, formatEther } from "viem";
 import { useNavigate } from "react-router-dom";
-import { Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
-
-const LISTING_FEE = "0.001"; // 0.001 BNB listing fee
+import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import ChatAgent from "@/agent/ChatAgent";
 
 const CreateProject = () => {
   const navigate = useNavigate();
-  const { isConnected, address } = useAccount();
-  const publicClient = usePublicClient();
+  const { address, isConnected } = useAccount();
+  const { data: balance } = useBalance({ address });
+  
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     category: "",
     fundingGoal: "",
-    logoUrl: "",
+    imageUrl: "",
   });
 
   const [milestones, setMilestones] = useState([
-    { description: "", targetDate: "" },
+    { description: "", targetDate: "" }
   ]);
 
-  const [creationStep, setCreationStep] = useState<'idle' | 'creating-project' | 'creating-markets' | 'complete'>('idle');
-  const [createdProjectId, setCreatedProjectId] = useState<number | null>(null);
-  const [marketCreationProgress, setMarketCreationProgress] = useState({ current: 0, total: 0 });
+  const [estimatedGas, setEstimatedGas] = useState<string>("~0.01");
 
-  const { writeContractAsync, data: hash, isPending } = useWriteContract();
-  const {
-    isLoading: isConfirming,
-    isSuccess,
-    isError: isTxError,
-    error: txError,
-  } = useWaitForTransactionReceipt({
-    hash,
-  });
+  const { writeContractAsync, data: hash, isPending, error: writeError } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
-  // Log transaction errors
+  const estimatedGasCost = () => {
+    const baseCost = 0.003;
+    const perMilestone = 0.002;
+    const listingFee = 0.001;
+    const total = baseCost + (milestones.length * perMilestone) + listingFee;
+    return total.toFixed(4);
+  };
+
   useEffect(() => {
-    if (isTxError && txError) {
-      console.error("❌ Transaction receipt error:", txError);
-      alert(
-        `Transaction failed on-chain. Check console for details.\n\nView on BSCScan: https://testnet.bscscan.com/tx/${hash}`
-      );
-    }
-  }, [isTxError, txError, hash]);
+    setEstimatedGas(estimatedGasCost());
+  }, [milestones.length]);
 
   const addMilestone = () => {
     if (milestones.length >= 3) {
-      alert("Maximum 3 milestones to reduce gas costs");
+      alert("Maximum 3 milestones allowed");
       return;
     }
     setMilestones([...milestones, { description: "", targetDate: "" }]);
+  };
+
+  const updateMilestone = (index: number, field: string, value: string) => {
+    const updated = [...milestones];
+    updated[index] = { ...updated[index], [field]: value };
+    setMilestones(updated);
   };
 
   const removeMilestone = (index: number) => {
@@ -74,282 +68,171 @@ const CreateProject = () => {
     setMilestones(milestones.filter((_, i) => i !== index));
   };
 
-  const updateMilestone = (index: number, field: string, value: string) => {
-    const updated = [...milestones];
-    updated[index] = { ...updated[index], [field]: value };
-    setMilestones(updated);
-  };
-
-  /**
-   * ✅ NEW - Auto-create prediction markets after project creation
-   */
-  const createPredictionMarkets = async (projectId: number, projectOwner: string) => {
-    if (!publicClient) {
-      console.error("No public client available");
-      return;
-    }
-
-    setCreationStep('creating-markets');
-    setMarketCreationProgress({ current: 0, total: milestones.length });
-
-    console.log(`🏗️ Creating ${milestones.length} prediction markets for project ${projectId}...`);
-
-    for (let i = 0; i < milestones.length; i++) {
-      try {
-        console.log(`Creating market for milestone ${i}...`);
-        
-        // Calculate days until milestone
-        const milestoneDate = new Date(milestones[i].targetDate);
-        const now = new Date();
-        const daysUntilMilestone = Math.max(
-          7, // Minimum 7 days betting period
-          Math.ceil((milestoneDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-        );
-
-        const marketTx = await writeContractAsync({
-          address: ACTIVE_CONTRACTS.PredictionMarket as `0x${string}`,
-          abi: PREDICTION_MARKET_ABI,
-          functionName: 'createMarket',
-          args: [
-            BigInt(projectId),
-            BigInt(i), // milestone index
-            projectOwner as `0x${string}`,
-            BigInt(Math.min(daysUntilMilestone, 365)) // Cap at 365 days
-          ],
-          gas: 300000n,
-        } as any);
-
-        console.log(`✅ Market ${i} created:`, marketTx);
-        
-        // Wait for confirmation
-        await publicClient.waitForTransactionReceipt({ hash: marketTx });
-        
-        setMarketCreationProgress({ current: i + 1, total: milestones.length });
-        
-        // Small delay between markets to avoid nonce issues
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-      } catch (error) {
-        console.error(`❌ Failed to create market for milestone ${i}:`, error);
-        alert(`Warning: Failed to create prediction market for milestone ${i + 1}. You can create it manually later.`);
-      }
-    }
-
-    setCreationStep('complete');
-    console.log('✅ All prediction markets created successfully!');
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    
     if (!isConnected || !address) {
       alert("Please connect your wallet first");
       return;
     }
 
-    try {
-      setCreationStep('creating-project');
+    // Check balance
+    const totalCost = parseEther(estimatedGas);
+    if (balance && balance.value < totalCost) {
+      alert(`Insufficient balance. You need at least ${estimatedGas} MNT. Get more from: https://faucet.sepolia.mantle.xyz`);
+      return;
+    }
+
+    // Validate funding goal
+    const fundingGoalNum = parseFloat(formData.fundingGoal);
+    if (!formData.fundingGoal || fundingGoalNum <= 0) {
+      alert("Please enter a valid funding goal greater than 0");
+      return;
+    }
+
+    // Funding goal must be at least 0.01 MNT
+    if (fundingGoalNum < 0.01) {
+      alert("Funding goal must be at least 0.01 MNT");
+      return;
+    }
+
+    // Validate at least 1 milestone
+    if (milestones.length === 0) {
+      alert("Please add at least 1 milestone");
+      return;
+    }
+
+    // Validate milestones
+    for (let i = 0; i < milestones.length; i++) {
+      if (!milestones[i].description.trim()) {
+        alert(`Please enter a description for Milestone ${i + 1}`);
+        return;
+      }
+      if (!milestones[i].targetDate) {
+        alert(`Please select a target date for Milestone ${i + 1}`);
+        return;
+      }
       
-      // Limit milestones to 3
-      if (milestones.length > 3) {
-        alert("Maximum 3 milestones allowed to reduce gas costs");
+      // Validate date is in the future (at least 1 day from now)
+      const targetDate = new Date(milestones[i].targetDate);
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      if (targetDate <= tomorrow) {
+        alert(`Milestone ${i + 1} target date must be at least 1 day in the future`);
         return;
       }
+    }
 
-      // Validate all fields
-      if (
-        !formData.name ||
-        !formData.description ||
-        !formData.category ||
-        !formData.fundingGoal
-      ) {
-        alert("Please fill in all required fields");
-        setCreationStep('idle');
-        return;
-      }
-
-      // Validate milestones
-      for (const milestone of milestones) {
-        if (!milestone.description || !milestone.targetDate) {
-          alert("Please fill in all milestone fields");
-          setCreationStep('idle');
-          return;
-        }
-      }
-
+    try {
       // Prepare milestone data
-      const milestoneDescriptions = milestones.map((m) => m.description);
-      const milestoneDates = milestones.map((m) =>
-        BigInt(Math.floor(new Date(m.targetDate).getTime() / 1000))
+      const milestoneDescriptions = milestones.map(m => m.description.trim());
+      const milestoneDates = milestones.map(m => 
+        Math.floor(new Date(m.targetDate).getTime() / 1000)
       );
 
-      // Validate future dates
-      const now = Math.floor(Date.now() / 1000);
-      for (const date of milestoneDates) {
-        if (date <= now) {
-          alert("All milestone dates must be in the future");
-          setCreationStep('idle');
-          return;
-        }
-      }
+      console.log("=== Submitting Project ===");
+      console.log("Contract Address:", ACTIVE_CONTRACTS.ProjectRegistry);
+      console.log("From Address:", address);
+      console.log("Balance:", balance ? formatEther(balance.value) : "0", "MNT");
+      console.log("Project Data:", {
+        name: formData.name,
+        description: formData.description,
+        category: formData.category,
+        logoUrl: formData.imageUrl || "",
+        fundingGoal: formData.fundingGoal + " MNT",
+        fundingGoalWei: parseEther(formData.fundingGoal).toString(),
+        milestones: milestones.map((m, i) => ({
+          index: i,
+          description: m.description,
+          targetDate: m.targetDate,
+          timestamp: milestoneDates[i],
+        })),
+      });
 
-      // Calculate funding goal
-      const fundingGoal = parseEther(formData.fundingGoal);
-
-      console.log("📝 Submitting project...");
-
-      // ✅ Create project
+      // Call submitProject with proper gas estimation
       const tx = await writeContractAsync({
         address: ACTIVE_CONTRACTS.ProjectRegistry as `0x${string}`,
         abi: PROJECT_REGISTRY_ABI,
-        functionName: "submitProject",
+        functionName: 'submitProject',
         args: [
-          formData.name,
-          formData.description,
-          formData.category,
-          formData.logoUrl || "",
-          fundingGoal,
-          milestoneDescriptions,
-          milestoneDates,
+          formData.name,                      // _name
+          formData.description,               // _description
+          formData.category,                  // _category
+          formData.imageUrl || "",            // _logoUrl
+          parseEther(formData.fundingGoal),   // _fundingGoal
+          milestoneDescriptions,              // _milestoneDescriptions
+          milestoneDates,                     // _milestoneDates
         ],
-        value: parseEther(LISTING_FEE),
-        gas: 1000000n,
-      } as any);
+        value: parseEther("0.001"), // Listing fee
+      }as any);
 
-      console.log("✅ Project transaction submitted:", tx);
+      console.log("Transaction hash:", tx);
       
-      // Wait for project creation to be confirmed
-      if (publicClient) {
-        const receipt = await publicClient.waitForTransactionReceipt({ hash: tx });
-        console.log("✅ Project creation confirmed:", receipt);
-
-        // Parse the ProjectSubmitted event to get the project ID
-        const projectSubmittedEvent = receipt.logs.find((log: any) => {
-          try {
-            // ProjectSubmitted event signature
-            return log.topics[0] === '0x...' // You'll need to add the event signature
-          } catch {
-            return false;
-          }
-        });
-
-        // For now, we'll fetch the total projects count and use that as the ID
-        // In production, parse the event properly
-        const totalProjects = await publicClient.readContract({
-          address: ACTIVE_CONTRACTS.ProjectRegistry as `0x${string}`,
-          abi: PROJECT_REGISTRY_ABI,
-          functionName: 'getTotalProjects',
-        } as any) as bigint;
-
-        const projectId = Number(totalProjects);
-        setCreatedProjectId(projectId);
-
-        console.log(`🎉 Project created with ID: ${projectId}`);
-
-        // ✅ NOW CREATE PREDICTION MARKETS
-        await createPredictionMarkets(projectId, address);
-      }
-
     } catch (error: any) {
-      console.error("❌ Transaction failed:", error);
-      setCreationStep('idle');
-
-      const errorMsg = error.message || error.toString();
-
-      if (errorMsg.includes("insufficient funds") || errorMsg.includes("exceeds balance")) {
-        alert(
-          `❌ Insufficient Balance\n\nYou need at least 0.15 tBNB:\n• 0.001 tBNB listing fee\n• ~0.05 tBNB for gas\n\nGet more from: https://testnet.bnbchain.org/faucet-smart`
-        );
-      } else if (errorMsg.includes("user rejected") || errorMsg.includes("User denied")) {
-        alert("Transaction cancelled by user");
-      } else {
-        alert(`❌ Transaction Failed\n\n${errorMsg.substring(0, 200)}\n\nCheck browser console for details.`);
+      console.error("=== Transaction Failed ===");
+      console.error("Error:", error);
+      
+      // Parse error messages
+      let errorMessage = "Failed to create project";
+      
+      if (error.message) {
+        if (error.message.includes('insufficient funds')) {
+          errorMessage = `Insufficient funds for gas + listing fee. You need ~${estimatedGas} MNT.\n\nGet testnet MNT from: https://faucet.sepolia.mantle.xyz`;
+        } else if (error.message.includes('user rejected') || error.message.includes('User rejected')) {
+          errorMessage = "Transaction was cancelled";
+        } else if (error.message.includes('reverted')) {
+          // Try to extract revert reason
+          const revertMatch = error.message.match(/reverted with the following reason:\n(.+)/);
+          if (revertMatch) {
+            errorMessage = `Contract reverted: ${revertMatch[1]}`;
+          } else {
+            errorMessage = "Transaction reverted. Possible reasons:\n" +
+              "• Insufficient MNT balance\n" +
+              "• Funding goal too low (minimum 0.01 MNT)\n" +
+              "• Invalid milestone dates\n" +
+              "• Contract paused or not accessible";
+          }
+        } else if (error.message.includes('gas required exceeds')) {
+          errorMessage = "Transaction requires too much gas. Try reducing the number of milestones.";
+        } else if (error.message.includes('network')) {
+          errorMessage = "Network error. Please check:\n" +
+            "• You're connected to Mantle Sepolia Testnet\n" +
+            "• Your internet connection is stable\n" +
+            "• Try refreshing the page";
+        } else {
+          errorMessage = `Error: ${error.message}`;
+        }
       }
+      
+      alert(errorMessage);
     }
   };
 
-  // Success state
-  if (creationStep === 'complete' && createdProjectId) {
+  if (isSuccess) {
     return (
       <div className="min-h-screen">
         <Header />
         <main className="pt-24 pb-16">
           <div className="container mx-auto px-4 max-w-2xl text-center">
-            <CheckCircle2 className="w-16 h-16 text-success mx-auto mb-4" />
-            <h2 className="text-3xl font-bold mb-4">
-              Project Created Successfully! 🎉
-            </h2>
+            <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
+            <h2 className="text-3xl font-bold mb-4">Project Created Successfully! 🎉</h2>
             <p className="text-muted-foreground mb-4">
-              Your project and {milestones.length} prediction markets have been created.
+              Your project has been submitted to the blockchain.
             </p>
-            <div className="bg-primary/10 border border-primary/50 rounded-lg p-4 mb-8">
-              <p className="text-sm font-medium">Project ID: {createdProjectId}</p>
-              <p className="text-xs text-muted-foreground mt-2">
-                ✅ {milestones.length} prediction markets created
+            {hash && (
+              <p className="text-sm text-muted-foreground mb-8 font-mono break-all">
+                Transaction: {hash}
               </p>
-              <p className="text-xs text-muted-foreground">
-                Users can now place bets on your milestones!
-              </p>
-            </div>
+            )}
             <div className="flex gap-4 justify-center">
-              <Button variant="hero" onClick={() => navigate(`/project/${createdProjectId}`)}>
-                View Project
+              <Button variant="hero" onClick={() => navigate('/projects')}>
+                View Projects
               </Button>
               <Button variant="outline" onClick={() => window.location.reload()}>
                 Create Another
               </Button>
             </div>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  // Loading state - Creating project or markets
-  if (creationStep !== 'idle') {
-    return (
-      <div className="min-h-screen">
-        <Header />
-        <main className="pt-24 pb-16">
-          <div className="container mx-auto px-4 max-w-2xl text-center">
-            <Loader2 className="w-16 h-16 text-primary mx-auto mb-4 animate-spin" />
-            
-            {creationStep === 'creating-project' && (
-              <>
-                <h2 className="text-3xl font-bold mb-4">Creating Project...</h2>
-                <p className="text-muted-foreground">
-                  Please confirm the transaction in your wallet
-                </p>
-              </>
-            )}
-            
-            {creationStep === 'creating-markets' && (
-              <>
-                <h2 className="text-3xl font-bold mb-4">Creating Prediction Markets</h2>
-                <p className="text-muted-foreground mb-4">
-                  Setting up betting markets for your milestones...
-                </p>
-                <div className="bg-gray-800/50 rounded-lg p-6 max-w-md mx-auto">
-                  <div className="text-4xl font-bold text-primary mb-2">
-                    {marketCreationProgress.current} / {marketCreationProgress.total}
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Markets created
-                  </p>
-                  <div className="w-full bg-gray-700 rounded-full h-2 mt-4">
-                    <div 
-                      className="bg-primary h-2 rounded-full transition-all duration-500"
-                      style={{ 
-                        width: `${(marketCreationProgress.current / marketCreationProgress.total) * 100}%` 
-                      }}
-                    />
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground mt-4">
-                  ⏳ This may take a few moments. Please don't close this window.
-                </p>
-              </>
-            )}
           </div>
         </main>
       </div>
@@ -362,6 +245,7 @@ const CreateProject = () => {
         <Header />
         <main className="pt-24 pb-16">
           <div className="container mx-auto px-4 max-w-2xl text-center">
+            <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
             <h2 className="text-3xl font-bold mb-4">Connect Your Wallet</h2>
             <p className="text-muted-foreground">
               Please connect your wallet to create a project.
@@ -375,7 +259,7 @@ const CreateProject = () => {
   return (
     <div className="min-h-screen">
       <Header />
-
+      
       <main className="pt-24 pb-16">
         <div className="container mx-auto px-4 max-w-4xl">
           <div className="mb-8">
@@ -383,23 +267,12 @@ const CreateProject = () => {
             <p className="text-xl text-muted-foreground">
               Submit your project for community predictions and funding
             </p>
+            {balance && (
+              <p className="text-sm text-muted-foreground mt-2">
+                Your balance: {parseFloat(formatEther(balance.value)).toFixed(4)} MNT
+              </p>
+            )}
           </div>
-
-          {/* Important Notice */}
-          <Card className="bg-blue-500/10 border-blue-500/50 mb-6">
-            <CardContent className="pt-6">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-blue-400 mt-0.5" />
-                <div>
-                  <h3 className="font-semibold text-blue-400 mb-1">Prediction Markets Will Be Auto-Created</h3>
-                  <p className="text-sm text-gray-300">
-                    After creating your project, prediction markets will be automatically created for each milestone. 
-                    This allows the community to bet on your success immediately!
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
           <form onSubmit={handleSubmit}>
             <Card className="bg-gradient-card mb-6">
@@ -412,10 +285,9 @@ const CreateProject = () => {
                   <Input
                     id="name"
                     required
+                    maxLength={100}
                     value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="DeFi Yield Optimizer"
                   />
                 </div>
@@ -425,13 +297,15 @@ const CreateProject = () => {
                   <Textarea
                     id="description"
                     required
+                    maxLength={500}
                     value={formData.description}
-                    onChange={(e) =>
-                      setFormData({ ...formData, description: e.target.value })
-                    }
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Describe your project..."
                     rows={4}
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {formData.description.length}/500 characters
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -440,16 +314,15 @@ const CreateProject = () => {
                     <Input
                       id="category"
                       required
+                      maxLength={50}
                       value={formData.category}
-                      onChange={(e) =>
-                        setFormData({ ...formData, category: e.target.value })
-                      }
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                       placeholder="DeFi, NFT, Gaming..."
                     />
                   </div>
 
                   <div>
-                    <Label htmlFor="fundingGoal">Funding Goal (BNB) *</Label>
+                    <Label htmlFor="fundingGoal">Funding Goal (MNT) *</Label>
                     <Input
                       id="fundingGoal"
                       type="number"
@@ -457,27 +330,27 @@ const CreateProject = () => {
                       min="0.01"
                       required
                       value={formData.fundingGoal}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          fundingGoal: e.target.value,
-                        })
-                      }
+                      onChange={(e) => setFormData({ ...formData, fundingGoal: e.target.value })}
                       placeholder="10.0"
                     />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Minimum: 0.01 MNT
+                    </p>
                   </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="logoUrl">Logo URL (optional)</Label>
+                  <Label htmlFor="imageUrl">Logo/Image URL (optional)</Label>
                   <Input
-                    id="logoUrl"
-                    value={formData.logoUrl}
-                    onChange={(e) =>
-                      setFormData({ ...formData, logoUrl: e.target.value })
-                    }
-                    placeholder="https://..."
+                    id="imageUrl"
+                    type="url"
+                    value={formData.imageUrl}
+                    onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                    placeholder="https://example.com/image.png"
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Provide a direct link to your project logo
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -485,11 +358,11 @@ const CreateProject = () => {
             <Card className="bg-gradient-card mb-6">
               <CardHeader>
                 <div className="flex justify-between items-center">
-                  <CardTitle>Milestones (Max 3)</CardTitle>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
+                  <CardTitle>Milestones (1-3)</CardTitle>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
                     onClick={addMilestone}
                     disabled={milestones.length >= 3}
                   >
@@ -499,10 +372,7 @@ const CreateProject = () => {
               </CardHeader>
               <CardContent className="space-y-6">
                 {milestones.map((milestone, index) => (
-                  <div
-                    key={index}
-                    className="p-4 border border-border/50 rounded-lg space-y-4"
-                  >
+                  <div key={index} className="p-4 border border-border/50 rounded-lg space-y-4">
                     <div className="flex justify-between items-center">
                       <h3 className="font-semibold">Milestone {index + 1}</h3>
                       {milestones.length > 1 && (
@@ -516,15 +386,14 @@ const CreateProject = () => {
                         </Button>
                       )}
                     </div>
-
+                    
                     <div>
                       <Label>Description *</Label>
                       <Input
                         required
+                        maxLength={200}
                         value={milestone.description}
-                        onChange={(e) =>
-                          updateMilestone(index, "description", e.target.value)
-                        }
+                        onChange={(e) => updateMilestone(index, 'description', e.target.value)}
                         placeholder="Launch Beta on Testnet"
                       />
                     </div>
@@ -535,37 +404,50 @@ const CreateProject = () => {
                         type="date"
                         required
                         value={milestone.targetDate}
-                        onChange={(e) =>
-                          updateMilestone(index, "targetDate", e.target.value)
-                        }
-                        min={new Date().toISOString().split("T")[0]}
+                        onChange={(e) => updateMilestone(index, 'targetDate', e.target.value)}
+                        min={new Date(Date.now() + 86400000).toISOString().split('T')[0]}
                       />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Must be at least 1 day in the future
+                      </p>
                     </div>
                   </div>
                 ))}
               </CardContent>
             </Card>
 
-            <Card className="bg-primary/10 border-primary/50 mb-6">
+            {/* Gas Estimate Card */}
+            <Card className="bg-yellow-500/10 border-yellow-500/50 mb-6">
               <CardContent className="pt-6">
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="font-semibold">Listing Fee:</span>
-                    <span>{LISTING_FEE} tBNB</span>
+                <div className="flex items-center gap-3">
+                  <div className="text-yellow-500">⚠️</div>
+                  <div className="flex-1">
+                    <p className="font-semibold">Transaction Cost</p>
+                    <p className="text-sm text-muted-foreground">
+                      Estimated: ~{estimatedGas} MNT (including 0.001 MNT listing fee)
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {milestones.length} milestone{milestones.length !== 1 ? 's' : ''} • Limit to 1-3 to save gas
+                    </p>
                   </div>
-                  <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>Estimated Gas:</span>
-                    <span>~0.005 tBNB</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Network Check */}
+            <Card className="bg-blue-500/10 border-blue-500/50 mb-6">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="text-blue-500">ℹ️</div>
+                  <div className="flex-1">
+                    <p className="font-semibold">Network Check</p>
+                    <p className="text-sm text-muted-foreground">
+                      Make sure you're connected to <strong>Mantle Sepolia Testnet</strong>
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Need testnet MNT? Get it from: <a href="https://faucet.sepolia.mantle.xyz" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">faucet.sepolia.mantle.xyz</a>
+                    </p>
                   </div>
-                  <div className="flex justify-between font-bold text-lg border-t pt-2">
-                    <span>Total Cost:</span>
-                    <span>
-                      ~{(parseFloat(LISTING_FEE) + 0.005).toFixed(3)} tBNB
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    ⚠️ Make sure you have at least 0.02 tBNB in your wallet for project + markets
-                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -576,24 +458,24 @@ const CreateProject = () => {
                 variant="hero"
                 size="lg"
                 className="flex-1"
-                disabled={isPending || isConfirming || creationStep !== 'idle'}
+                disabled={isPending || isConfirming}
               >
-                {creationStep !== 'idle' ? (
+                {isPending || isConfirming ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    Processing...
+                    {isPending ? 'Awaiting Confirmation...' : 'Processing Transaction...'}
                   </>
                 ) : (
-                  `Create Project + Markets (${LISTING_FEE} tBNB)`
+                  'Create Project'
                 )}
               </Button>
-
+              
               <Button
                 type="button"
                 variant="outline"
                 size="lg"
-                onClick={() => navigate("/projects")}
-                disabled={creationStep !== 'idle'}
+                onClick={() => navigate('/projects')}
+                disabled={isPending || isConfirming}
               >
                 Cancel
               </Button>
@@ -601,6 +483,7 @@ const CreateProject = () => {
           </form>
         </div>
       </main>
+      <ChatAgent/>
     </div>
   );
 };

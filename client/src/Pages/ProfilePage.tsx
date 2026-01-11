@@ -386,7 +386,7 @@ const ProfilePage = () => {
                       <span className="text-sm">Total Staked</span>
                     </div>
                     <span className="font-bold text-lg">
-                      {parseFloat(formatEther(userStats.totalStaked)).toFixed(4)} BNB
+                      {parseFloat(formatEther(userStats.totalStaked)).toFixed(4)} MNT
                     </span>
                   </div>
 

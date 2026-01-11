@@ -155,13 +155,13 @@ export default function ClaimRewardsSection() {
           <div className="flex items-center justify-between mb-2">
             <span className="font-semibold">Total Claimable</span>
             <span className="text-2xl font-bold text-success">
-              {parseFloat(formatEther(totalClaimable)).toFixed(4)} BNB
+              {parseFloat(formatEther(totalClaimable)).toFixed(4)} MNT
             </span>
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Total Profit</span>
             <span className="font-semibold text-success">
-              +{parseFloat(formatEther(totalProfit)).toFixed(4)} BNB
+              +{parseFloat(formatEther(totalProfit)).toFixed(4)} MNT
             </span>
           </div>
         </div>
@@ -196,19 +196,19 @@ export default function ClaimRewardsSection() {
                 <div>
                   <div className="text-muted-foreground text-xs">Staked</div>
                   <div className="font-semibold">
-                    {parseFloat(formatEther(bet.amount)).toFixed(4)} BNB
+                    {parseFloat(formatEther(bet.amount)).toFixed(4)} MNT
                   </div>
                 </div>
                 <div>
                   <div className="text-muted-foreground text-xs">Reward</div>
                   <div className="font-semibold text-success">
-                    {parseFloat(formatEther(bet.reward)).toFixed(4)} BNB
+                    {parseFloat(formatEther(bet.reward)).toFixed(4)} MNT
                   </div>
                 </div>
                 <div>
                   <div className="text-muted-foreground text-xs">Profit</div>
                   <div className="font-semibold text-success">
-                    +{parseFloat(formatEther(bet.profit)).toFixed(4)} BNB
+                    +{parseFloat(formatEther(bet.profit)).toFixed(4)} MNT
                   </div>
                 </div>
               </div>
