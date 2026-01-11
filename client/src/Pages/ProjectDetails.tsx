@@ -54,7 +54,6 @@ const ProjectDetail = () => {
       console.log(`👁️ Duplicate view prevented for project ${projectId}`);
     }
     
-    // Update view count display
     setViewCount(getProjectViews(projectId));
     }
   }, [id, address]);
@@ -159,12 +158,10 @@ const ProjectDetail = () => {
 
   const milestonesArray = (milestones as any[]) || [];
 
-  // Calculate market stats
   let yesPercentage = 50;
   let noPercentage = 50;
   let marketExists = false;
 
-  // const marketData = market as any;
   if (marketData && marketData.id && marketData.id > 0n) {
     marketExists = true;
     const totalYes = marketData.totalYesAmount || 0n;

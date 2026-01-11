@@ -1,8 +1,5 @@
 import { defineChain } from "viem";
 
-// ========================================
-// MANTLE SEPOLIA CHAIN DEFINITION
-// ========================================
 export const mantleSepolia = defineChain({
   id: 5003,
   name: "Mantle Sepolia Testnet",
@@ -29,9 +26,6 @@ export const mantleSepolia = defineChain({
   testnet: true,
 });
 
-// ========================================
-// CONTRACT ADDRESSES
-// ========================================
 export const CONTRACTS = {
   mantleSepolia: {
     ProjectRegistry: "0xf033A7Ff995a2A87C2ba4748bfF7626D6482Da64",
@@ -41,15 +35,9 @@ export const CONTRACTS = {
   },
 };
 
-// ========================================
-// ACTIVE CONFIGURATION
-// ========================================
 export const ACTIVE_CHAIN = mantleSepolia;
 export const ACTIVE_CONTRACTS = CONTRACTS.mantleSepolia;
 
-// ========================================
-// PROJECT REGISTRY ABI (From deployed contract)
-// ========================================
 export const PROJECT_REGISTRY_ABI = [
   {
     inputs: [],

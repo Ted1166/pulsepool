@@ -20,11 +20,9 @@ export const LiveMarketStats = ({
   const [isUpdating, setIsUpdating] = useState(false);
   const [previousYes, setPreviousYes] = useState<number>(50);
 
-  // Extract market data safely
   const market = marketResult.data as any;
   const isLoading = marketResult.isLoading;
 
-  // Animate when data changes
   useEffect(() => {
     if (market && typeof market === 'object' && 'yesPercentage' in market) {
       if (market.yesPercentage !== previousYes) {
@@ -52,7 +50,6 @@ export const LiveMarketStats = ({
     );
   }
 
-  // Safely extract values with defaults
   const totalYes = market.totalYes || 0n;
   const totalNo = market.totalNo || 0n;
   const yesPercentage = market.yesPercentage || 50;
@@ -120,7 +117,7 @@ export const LiveMarketStats = ({
                 <DollarSign className="w-3 h-3" />
                 Total Volume
               </div>
-              <div className="font-bold">{formatEther(totalVolume)} BNB</div>
+              <div className="font-bold">{formatEther(totalVolume)} MNT</div>
             </div>
             <div>
               <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">

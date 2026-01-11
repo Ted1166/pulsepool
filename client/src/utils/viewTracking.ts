@@ -1,22 +1,11 @@
-// Create this file: src/utils/viewTracking.ts
-
-/**
- * View Tracking System using Wallet Address
- * Prevents duplicate views from same user
- * Syncs across devices using wallet address as identifier
- */
-
 interface ProjectView {
   projectId: number;
-  viewers: Set<string>; // Wallet addresses
+  viewers: Set<string>; 
   totalViews: number;
 }
 
 const VIEW_STORAGE_KEY = 'pulsepool_project_views';
 
-/**
- * Get all project views from localStorage
- */
 function getAllViews(): Map<number, ProjectView> {
   const stored = localStorage.getItem(VIEW_STORAGE_KEY);
   if (!stored) return new Map();
@@ -41,9 +30,7 @@ function getAllViews(): Map<number, ProjectView> {
   }
 }
 
-/**
- * Save views to localStorage
- */
+
 function saveViews(viewsMap: Map<number, ProjectView>) {
   const obj: any = {};
   
@@ -57,12 +44,6 @@ function saveViews(viewsMap: Map<number, ProjectView>) {
   localStorage.setItem(VIEW_STORAGE_KEY, JSON.stringify(obj));
 }
 
-/**
- * Track a project view
- * @param projectId - Project ID
- * @param walletAddress - User's wallet address (or 'anonymous' if not connected)
- * @returns true if this is a new view, false if duplicate
- */
 export function trackProjectView(projectId: number, walletAddress?: string): boolean {
   const viewerId = walletAddress?.toLowerCase() || 'anonymous';
   const viewsMap = getAllViews();
@@ -70,7 +51,6 @@ export function trackProjectView(projectId: number, walletAddress?: string): boo
   let projectView = viewsMap.get(projectId);
   
   if (!projectView) {
-    // First view for this project
     projectView = {
       projectId,
       viewers: new Set([viewerId]),
@@ -81,12 +61,10 @@ export function trackProjectView(projectId: number, walletAddress?: string): boo
     return true;
   }
   
-  // Check if this viewer has already viewed
   if (projectView.viewers.has(viewerId)) {
-    return false; // Duplicate view, don't count
+    return false; 
   }
   
-  // New unique viewer
   projectView.viewers.add(viewerId);
   projectView.totalViews++;
   viewsMap.set(projectId, projectView);
@@ -95,18 +73,13 @@ export function trackProjectView(projectId: number, walletAddress?: string): boo
   return true;
 }
 
-/**
- * Get view count for a project
- */
 export function getProjectViews(projectId: number): number {
   const viewsMap = getAllViews();
   const projectView = viewsMap.get(projectId);
   return projectView?.totalViews || 0;
 }
 
-/**
- * Get all projects sorted by views (trending)
- */
+
 export function getTrendingProjects(): Array<{ projectId: number; views: number }> {
   const viewsMap = getAllViews();
   const trending: Array<{ projectId: number; views: number }> = [];
@@ -118,9 +91,7 @@ export function getTrendingProjects(): Array<{ projectId: number; views: number 
   return trending.sort((a, b) => b.views - a.views);
 }
 
-/**
- * Check if current user has viewed a project
- */
+
 export function hasUserViewedProject(projectId: number, walletAddress?: string): boolean {
   const viewerId = walletAddress?.toLowerCase() || 'anonymous';
   const viewsMap = getAllViews();

@@ -1,9 +1,32 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { Menu, X, Zap, User } from "lucide-react";
+import { Menu, X, User } from "lucide-react";
 import { useState } from "react";
 import { useAccount } from "wagmi";
+
+// Inline SVG Logo Component
+const Logo = ({ className = "w-10 h-10" }: { className?: string }) => (
+  <svg viewBox="0 0 200 200" className={className} xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" style={{ stopColor: '#00d9ff', stopOpacity: 1 }} />
+        <stop offset="100%" style={{ stopColor: '#0066ff', stopOpacity: 1 }} />
+      </linearGradient>
+      <filter id="glow">
+        <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+        <feMerge>
+          <feMergeNode in="coloredBlur"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+    </defs>
+    <rect x="20" y="20" width="160" height="160" rx="35" ry="35" fill="url(#bgGradient)"/>
+    <rect x="25" y="25" width="150" height="150" rx="32" ry="32" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="2"/>
+    <text x="100" y="130" fontFamily="Arial, sans-serif" fontSize="90" fontWeight="bold" fill="white" textAnchor="middle" filter="url(#glow)">PP</text>
+    <ellipse cx="80" cy="60" rx="40" ry="20" fill="white" opacity="0.15"/>
+  </svg>
+);
 
 export const Header = () => {
   const location = useLocation();
@@ -26,9 +49,9 @@ export const Header = () => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Zap className="w-5 h-5 text-background" />
+          <Link to="/" className="flex items-center gap-3 group">
+            <div className="group-hover:scale-110 transition-transform">
+              <Logo className="w-10 h-10" />
             </div>
             <span className="font-bold text-xl bg-gradient-primary bg-clip-text text-transparent">
               PulsePool

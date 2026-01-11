@@ -19,7 +19,7 @@ interface Milestone {
 
 interface MilestoneManagerProps {
   projectId: number;
-  milestones: any[]; // Raw milestone data from contract
+  milestones: any[]; 
   isOwner: boolean;
 }
 
@@ -37,7 +37,6 @@ export const MilestoneManager = ({
 
   if (!isOwner) return null;
 
-  // Parse milestones from contract format
   const parsedMilestones = milestones.map((m, idx) => ({
     index: idx,
     id: m.id ?? m[0],
@@ -62,7 +61,6 @@ export const MilestoneManager = ({
       return;
     }
 
-    // For now, just show a message. Backend integration needed
     alert(
       `📝 Milestone Ready to Add:\n\n` +
       `Description: ${formData.description}\n` +

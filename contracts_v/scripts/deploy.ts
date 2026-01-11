@@ -3,10 +3,7 @@ import hre from "hardhat";
 import fs from "fs";
 import path from "path";
 
-// ========================================
-// Configuration: Set what to deploy
-// ========================================
-const DEPLOY_MODE = process.env.DEPLOY_MODE || "all"; // "all" or "predictionmarket"
+const DEPLOY_MODE = process.env.DEPLOY_MODE || "all"; 
 
 async function main() {
   const networkName = hre.network.name || "mantleSepolia";
@@ -39,9 +36,6 @@ async function main() {
     contracts: {},
   };
 
-  // ================================================
-  // PREDICTION MARKET ONLY MODE
-  // ================================================
   if (DEPLOY_MODE === "predictionmarket") {
     console.log("📦 [1/1] Deploying PredictionMarket...");
     const PredictionMarketArtifact = await hre.artifacts.readArtifact("PredictionMarket");
@@ -59,9 +53,6 @@ async function main() {
     deploymentInfo.contracts.PredictionMarket = predictionMarketAddress;
   } 
   
-  // ================================================
-  // FULL DEPLOYMENT MODE
-  // ================================================
   else {
     // 1. Deploy ProjectRegistry
     console.log("📦 [1/4] Deploying ProjectRegistry...");
@@ -130,9 +121,6 @@ async function main() {
     };
   }
 
-  // ================================================
-  // Save Deployment Info
-  // ================================================
   const deploymentsDir = path.join(process.cwd(), "deployments");
   if (!fs.existsSync(deploymentsDir)) {
     fs.mkdirSync(deploymentsDir, { recursive: true });
@@ -153,9 +141,6 @@ async function main() {
   console.log("💾 Deployment info saved to:", filename);
   console.log();
 
-  // ================================================
-  // Deployment Summary
-  // ================================================
   console.log("🎉 ═══════════════════════════════════════════════════════");
   console.log("   DEPLOYMENT COMPLETE!");
   console.log("═══════════════════════════════════════════════════════");

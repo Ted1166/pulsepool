@@ -64,7 +64,7 @@ const LeaderboardPage = () => {
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">Total Staked</div>
-                    <div className="text-xl font-bold">485.7 BNB</div>
+                    <div className="text-xl font-bold">485.7 MNT</div>
                     <div className="text-xs text-muted-foreground">Across all markets</div>
                   </div>
                 </div>

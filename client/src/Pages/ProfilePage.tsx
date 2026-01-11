@@ -53,7 +53,6 @@ const ProfilePage = () => {
     joinedDate: new Date().toISOString(),
   });
 
-  // Load profile from localStorage
   useEffect(() => {
     if (!isConnected || !address) {
       navigate('/');
@@ -73,7 +72,6 @@ const ProfilePage = () => {
     }
   }, [address, isConnected, navigate]);
 
-  // Calculate user stats from bets
   const userStats = {
     totalPredictions: userBets?.length || 0,
     totalStaked: userBets?.reduce((sum, bet: any) => sum + bet.amount, 0) || 0n,
@@ -94,7 +92,6 @@ const ProfilePage = () => {
   };
 
   const handleCancel = () => {
-    // Reload from localStorage
     if (address) {
       const profileKey = `predict_fund_profile_${address}`;
       const storedProfile = localStorage.getItem(profileKey);

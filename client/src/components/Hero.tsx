@@ -5,6 +5,29 @@ import { useProjectStats } from "@/hooks/useProjects";
 import { formatEther } from "viem";
 import heroImage from "@/assets/hero-bg.jpg";
 
+// Inline SVG Logo Component
+const Logo = ({ className = "w-24 h-24" }: { className?: string }) => (
+  <svg viewBox="0 0 200 200" className={className} xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="heroLogoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" style={{ stopColor: '#00d9ff', stopOpacity: 1 }} />
+        <stop offset="100%" style={{ stopColor: '#0066ff', stopOpacity: 1 }} />
+      </linearGradient>
+      <filter id="heroGlow">
+        <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+        <feMerge>
+          <feMergeNode in="coloredBlur"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+    </defs>
+    <rect x="20" y="20" width="160" height="160" rx="35" ry="35" fill="url(#heroLogoGradient)"/>
+    <rect x="25" y="25" width="150" height="150" rx="32" ry="32" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="2"/>
+    <text x="100" y="130" fontFamily="Arial, sans-serif" fontSize="90" fontWeight="bold" fill="white" textAnchor="middle" filter="url(#heroGlow)">PP</text>
+    <ellipse cx="80" cy="60" rx="40" ry="20" fill="white" opacity="0.15"/>
+  </svg>
+);
+
 export const Hero = () => {
   const { data: stats, isLoading } = useProjectStats();
 
@@ -13,9 +36,9 @@ export const Hero = () => {
       {/* Background with Grid Pattern */}
       <div className="absolute inset-0 z-0">
         <img
-        src={heroImage}
-        alt="Predict & Fund Hero"
-        className="w-full h-full object-cover opacity-40"
+          src={heroImage}
+          alt="Predict & Fund Hero"
+          className="w-full h-full object-cover opacity-40"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-background via-primary/5 to-background" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(0,217,255,0.1),transparent_50%)]" />
@@ -24,6 +47,11 @@ export const Hero = () => {
       {/* Content */}
       <div className="container mx-auto px-4 relative z-10 pt-20">
         <div className="max-w-4xl mx-auto text-center">
+          {/* Logo Badge */}
+          <div className="flex justify-center mb-6 animate-pulse">
+            <Logo className="w-24 h-24 md:w-32 md:h-32 drop-shadow-2xl" />
+          </div>
+
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/30 mb-8">
             <Zap className="w-4 h-4 text-primary" />
             <span className="text-sm font-medium text-primary">Powered by Mantle</span>

@@ -5,22 +5,20 @@ import {
   PROJECT_REGISTRY_ABI,
 } from "@/lib/contracts";
 
-// Hook to get total project count
 export function useProjectCount() {
   return useReadContract({
     address: ACTIVE_CONTRACTS.ProjectRegistry as `0x${string}`,
     abi: PROJECT_REGISTRY_ABI,
-    functionName: "getTotalProjects", // ✅ CHANGED from projectCount
+    functionName: "getTotalProjects", 
     chainId: ACTIVE_CHAIN.id,
   });
 }
 
-// Hook to get a single project by ID
 export function useProject(projectId: number | string) {
   return useReadContract({
     address: ACTIVE_CONTRACTS.ProjectRegistry as `0x${string}`,
     abi: PROJECT_REGISTRY_ABI,
-    functionName: "getProject", // ✅ CHANGED from projects
+    functionName: "getProject",
     args: [BigInt(projectId)],
     chainId: ACTIVE_CHAIN.id,
     query: {
@@ -29,7 +27,6 @@ export function useProject(projectId: number | string) {
   });
 }
 
-// Hook to get project milestones
 export function useProjectMilestones(projectId: number | string) {
   return useReadContract({
     address: ACTIVE_CONTRACTS.ProjectRegistry as `0x${string}`,
@@ -43,7 +40,6 @@ export function useProjectMilestones(projectId: number | string) {
   });
 }
 
-// Hook to get user's projects
 export function useUserProjects(address?: `0x${string}`) {
   return useReadContract({
     address: ACTIVE_CONTRACTS.ProjectRegistry as `0x${string}`,
@@ -57,7 +53,6 @@ export function useUserProjects(address?: `0x${string}`) {
   });
 }
 
-// Hook for platform stats
 export function useProjectStats() {
   const { data: count } = useProjectCount();
 
@@ -71,8 +66,6 @@ export function useProjectStats() {
   };
 }
 
-// Hook to get all projects - SIMPLIFIED VERSION
-// Hook to get all projects - INDIVIDUAL QUERIES VERSION
 export function useAllProjects() {
   // const { data: count, isLoading: countLoading } = useProjectCount();
   // console.log("count ", count);
@@ -104,7 +97,7 @@ export function useAllProjects() {
   return useReadContract({
     address: ACTIVE_CONTRACTS.ProjectRegistry as `0x${string}`,
     abi: PROJECT_REGISTRY_ABI,
-    functionName: "getAllProjects", // ✅ CHANGED from projectCount
+    functionName: "getAllProjects", 
     chainId: ACTIVE_CHAIN.id,
   });
 }

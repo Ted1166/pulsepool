@@ -27,7 +27,7 @@ interface ProjectCardProps {
   totalPredictions: bigint;
   milestonesCount: number;
   createdAt: bigint;
-  status?: number; // 0 = Active, 1 = Completed, 2 = Cancelled, etc.
+  status?: number;
 }
 
 export const ProjectCard = ({
@@ -44,13 +44,11 @@ export const ProjectCard = ({
   const { isConnected } = useAccount();
   const [views, setViews] = useState(0);
   
-  // Follow/Unfollow functionality
   const { data: isFollowing, refetch: refetchFollowing } = useIsFollowing(id);
   const { followProject, isPending: isFollowing_Pending } = useFollowProject();
   const { unfollowProject, isPending: isUnfollowing } = useUnfollowProject();
   const { followerCount, refetch: refetchFollowers } = useProjectFollowers(id);
 
-  // Load views from localStorage
   useEffect(() => {
     const viewsKey = `project_views_${id}`;
     const storedViews = localStorage.getItem(viewsKey);
@@ -61,7 +59,6 @@ export const ProjectCard = ({
     ? Math.min(100, Number((fundingRaised * 100n) / fundingGoal))
     : 0;
 
-  // Calculate confidence based on predictions
   const predictionCount = Number(totalPredictions);
   const confidenceLevel = predictionCount === 0 ? 50 : Math.min(95, 50 + predictionCount * 2);
   
@@ -86,7 +83,6 @@ export const ProjectCard = ({
         await followProject(id);
       }
       
-      // Refetch data after action
       setTimeout(() => {
         refetchFollowing();
         refetchFollowers();

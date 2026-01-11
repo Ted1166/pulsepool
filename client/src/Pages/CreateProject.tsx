@@ -76,33 +76,28 @@ const CreateProject = () => {
       return;
     }
 
-    // Check balance
     const totalCost = parseEther(estimatedGas);
     if (balance && balance.value < totalCost) {
       alert(`Insufficient balance. You need at least ${estimatedGas} MNT. Get more from: https://faucet.sepolia.mantle.xyz`);
       return;
     }
 
-    // Validate funding goal
     const fundingGoalNum = parseFloat(formData.fundingGoal);
     if (!formData.fundingGoal || fundingGoalNum <= 0) {
       alert("Please enter a valid funding goal greater than 0");
       return;
     }
 
-    // Funding goal must be at least 0.01 MNT
     if (fundingGoalNum < 0.01) {
       alert("Funding goal must be at least 0.01 MNT");
       return;
     }
 
-    // Validate at least 1 milestone
     if (milestones.length === 0) {
       alert("Please add at least 1 milestone");
       return;
     }
 
-    // Validate milestones
     for (let i = 0; i < milestones.length; i++) {
       if (!milestones[i].description.trim()) {
         alert(`Please enter a description for Milestone ${i + 1}`);
@@ -113,7 +108,6 @@ const CreateProject = () => {
         return;
       }
       
-      // Validate date is in the future (at least 1 day from now)
       const targetDate = new Date(milestones[i].targetDate);
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
@@ -125,7 +119,6 @@ const CreateProject = () => {
     }
 
     try {
-      // Prepare milestone data
       const milestoneDescriptions = milestones.map(m => m.description.trim());
       const milestoneDates = milestones.map(m => 
         Math.floor(new Date(m.targetDate).getTime() / 1000)
@@ -150,21 +143,20 @@ const CreateProject = () => {
         })),
       });
 
-      // Call submitProject with proper gas estimation
       const tx = await writeContractAsync({
         address: ACTIVE_CONTRACTS.ProjectRegistry as `0x${string}`,
         abi: PROJECT_REGISTRY_ABI,
         functionName: 'submitProject',
         args: [
-          formData.name,                      // _name
-          formData.description,               // _description
-          formData.category,                  // _category
-          formData.imageUrl || "",            // _logoUrl
-          parseEther(formData.fundingGoal),   // _fundingGoal
-          milestoneDescriptions,              // _milestoneDescriptions
-          milestoneDates,                     // _milestoneDates
+          formData.name,                      
+          formData.description,               
+          formData.category,                  
+          formData.imageUrl || "",            
+          parseEther(formData.fundingGoal),   
+          milestoneDescriptions,              
+          milestoneDates,                    
         ],
-        value: parseEther("0.001"), // Listing fee
+        value: parseEther("0.001"), 
       }as any);
 
       console.log("Transaction hash:", tx);
@@ -173,7 +165,6 @@ const CreateProject = () => {
       console.error("=== Transaction Failed ===");
       console.error("Error:", error);
       
-      // Parse error messages
       let errorMessage = "Failed to create project";
       
       if (error.message) {
@@ -182,7 +173,6 @@ const CreateProject = () => {
         } else if (error.message.includes('user rejected') || error.message.includes('User rejected')) {
           errorMessage = "Transaction was cancelled";
         } else if (error.message.includes('reverted')) {
-          // Try to extract revert reason
           const revertMatch = error.message.match(/reverted with the following reason:\n(.+)/);
           if (revertMatch) {
             errorMessage = `Contract reverted: ${revertMatch[1]}`;

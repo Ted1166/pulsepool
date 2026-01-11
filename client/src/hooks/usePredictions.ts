@@ -681,8 +681,6 @@ async function getAllPredictorAddresses(publicClient: any): Promise<string[]> {
   }
 }
 
-// Remove the old alternative function - we only need one now
-
 export function useTopPredictors(limit: number = 10) {
   const publicClient = usePublicClient();
 
@@ -697,7 +695,6 @@ export function useTopPredictors(limit: number = 10) {
       try {
         console.log('🏆 Fetching leaderboard data...');
         
-        // ✅ Use bet counter method only (more reliable for BSC testnet)
         const addresses = await getAllPredictorAddresses(publicClient);
         
         if (addresses.length === 0) {
@@ -707,7 +704,6 @@ export function useTopPredictors(limit: number = 10) {
         
         const leaderboardData: LeaderboardEntry[] = [];
         
-        // ✅ Process all found addresses (already limited to 50 in getAllPredictorAddresses)
         console.log(`Processing ${addresses.length} predictor addresses...`);
         
         for (const address of addresses) {
@@ -738,7 +734,6 @@ export function useTopPredictors(limit: number = 10) {
 
                 totalStaked += bet.amount;
 
-                // Check if bet was won (reward > amount staked)
                 if (bet.reward > bet.amount) {
                   correctPredictions++;
                   totalWon += bet.reward;
@@ -760,7 +755,6 @@ export function useTopPredictors(limit: number = 10) {
               totalStakedMNT
             );
 
-            // Check for display name in localStorage
             const profileKey = `predict_fund_profile_${address}`;
             const storedProfile = localStorage.getItem(profileKey);
             let displayName: string | undefined;
@@ -788,15 +782,12 @@ export function useTopPredictors(limit: number = 10) {
           }
         }
 
-        // Filter users with < 3 predictions (lowered from 10 for testing)
         const qualified = leaderboardData.filter(
           entry => entry.totalPredictions >= 3
         );
 
-        // Sort by reputation score
         qualified.sort((a, b) => b.reputationScore - a.reputationScore);
 
-        // Assign ranks
         qualified.forEach((entry, index) => {
           entry.rank = index + 1;
         });
@@ -809,8 +800,8 @@ export function useTopPredictors(limit: number = 10) {
         return [];
       }
     },
-    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
-    refetchInterval: 1000 * 60 * 5, // Refetch every 5 minutes
+    staleTime: 1000 * 60 * 5, 
+    refetchInterval: 1000 * 60 * 5, 
     retry: 1,
   });
 }
